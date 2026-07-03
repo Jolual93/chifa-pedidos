@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Cocina — Cola de Pedidos</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:#101010;font-family:'Segoe UI',Arial,sans-serif;
+    display:flex;flex-direction:column;align-items:center;padding:24px 16px 60px;color:#eee}
+  h1{font-size:22px;margin:0 0 4px}
+  .sub{color:#999;font-size:13px;margin-bottom:20px}
+  .queue{display:flex;flex-wrap:wrap;gap:14px;max-width:1100px;justify-content:flex-start;
+    align-content:flex-start;min-height:200px}
+  .stations{display:flex;gap:16px;width:100%;max-width:1300px;align-items:flex-start;flex-wrap:wrap}
+  .station{flex:1;min-width:280px;background:#1a1a1a;border-radius:12px;padding:14px;
+    border:2px solid #333}
+  .station h2{margin:0 0 10px;font-size:16px;display:flex;align-items:center;justify-content:space-between}
+  .station .scount{background:#444;border-radius:14px;padding:2px 10px;font-size:13px}
+  .station.chaufero{border-color:#caa86a}
+  .station.frituras{border-color:#efa35d}
+  .station.saltado{border-color:#b5342f}
+  .card{position:relative;width:100%;min-height:110px;border-radius:10px;border:4px solid #d8dadc;
+    display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+    padding:10px;box-shadow:0 4px 12px rgba(0,0,0,.4);color:#2c2014;margin-bottom:12px}
+  .card .pos{position:absolute;top:-12px;left:-12px;width:28px;height:28px;border-radius:50%;
+    background:#222;color:#fff;display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:700;border:2px solid #fff}
+  .card .name{font-size:16px;font-weight:700;text-align:center;margin-top:8px}
+  .card .time{font-size:11px;color:#5a4a35;margin-top:4px}
+  .card button{margin-top:8px;width:100%;padding:8px;border:none;border-radius:6px;
+    background:#2e7d4f;color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+  .card button:active{transform:scale(.97)}
+  .new-blink{animation:blink 0.9s ease-in-out infinite}
+  @keyframes blink{
+    0%,100%{box-shadow:0 0 0 0 rgba(255,210,80,.9), 0 4px 12px rgba(0,0,0,.4);}
+    50%{box-shadow:0 0 0 10px rgba(255,210,80,0), 0 4px 12px rgba(0,0,0,.4);}
+  }
+  .empty{color:#777;font-size:14px;margin-top:40px}
+  .topbar{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .count-badge{background:#b53030;color:#fff;border-radius:20px;padding:4px 12px;font-size:13px;font-weight:700}
+  .sound-toggle{font-size:12px;color:#bbb;cursor:pointer;user-select:none;border:1px solid #555;
+    border-radius:6px;padding:4px 10px}
+  .sound-toggle.off{opacity:.5}
+  .alarm-banner{
+    position:fixed; top:0; left:0; right:0; z-index:100;
+    background:#c0392b; color:#fff; padding:14px 16px;
+    display:none; align-items:center; justify-content:space-between;
+    box-shadow:0 4px 14px rgba(0,0,0,.5);
+    animation:alarmPulse 1s ease-in-out infinite;
+  }
+  .alarm-banner.show{display:flex}
+  .alarm-banner .txt{font-size:15px;font-weight:700}
+  .alarm-banner button{
+    background:#fff; color:#c0392b; border:none; border-radius:8px;
+    padding:10px 18px; font-size:14px; font-weight:700; cursor:pointer;
+  }
+  @keyframes alarmPulse{
+    0%,100%{background:#c0392b}
+    50%{background:#e74c3c}
+  }
+  @media (max-width:480px){
+    body{padding:78px 10px 50px}
+    h1{font-size:18px}
+    .topbar{flex-wrap:wrap;gap:8px}
+    .station{min-width:100%}
+  }
+  .unlock-bg{
+    position:fixed; inset:0; background:#101010; z-index:200;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+  }
+  .unlock-bg button{
+    background:#b53030; color:#fff; border:none; border-radius:10px;
+    padding:16px 28px; font-size:16px; font-weight:700; cursor:pointer;
+  }
+  .voice-panel{
+    background:#1a1a1a; border:1px solid #444; border-radius:10px;
+    padding:10px 14px; margin-bottom:14px; display:none;
+    width:100%; max-width:1300px; font-size:13px;
+  }
+  .voice-panel.show{display:block}
+  .voice-panel label{display:block;margin:8px 0 3px;color:#bbb}
+  .voice-panel select, .voice-panel input[type=range]{width:100%}
+  .voice-row{display:flex; gap:16px; flex-wrap:wrap}
+  .voice-row > div{flex:1; min-width:160px}
+  .voice-panel button{
+    margin-top:10px; background:#2e7d4f; color:#fff; border:none; border-radius:6px;
+    padding:7px 14px; font-size:13px; cursor:pointer;
+  }
+</style>
+</head>
+<body>
+  <div class="unlock-bg" id="unlockBg">
+    <div style="font-size:40px">🔔</div>
+    <div style="color:#eee;font-size:15px;text-align:center;max-width:280px">
+      Toca el botón para activar el sonido y la voz de las alertas en este dispositivo
+    </div>
+    <button id="unlockBtn">Activar sonido</button>
+  </div>
+  <div class="topbar">
+    <h1>👨‍🍳 Cocina</h1>
+    <span class="count-badge" id="countBadge">0</span>
+    <span class="sound-toggle" id="soundToggle">🔊 Sonido: ON</span>
+    <span class="sound-toggle" id="recuentoBtn" style="border-color:#caa86a;color:#ffe1a3">🔁 Recuento</span>
+    <span class="sound-toggle" id="notifBtn">🔔 Notif: –</span>
+    <span class="sound-toggle" id="voiceBtn">🎙️ Voz</span>
+    <span class="sound-toggle" id="fullscreenBtn">⛶ Pantalla completa</span>
+    <span class="sound-toggle" id="clearAllBtn" style="border-color:#b5342f;color:#ff9b8a">🗑 Vaciar cola</span>
+  </div>
+
+  <div class="voice-panel" id="voicePanel">
+    <label>Elegir voz (las disponibles dependen de tu dispositivo/navegador)</label>
+    <select id="voiceSelect"></select>
+    <div class="voice-row">
+      <div>
+        <label>Velocidad: <span id="rateVal">1.0</span></label>
+        <input type="range" id="rateRange" min="0.6" max="1.4" step="0.05" value="1">
+      </div>
+      <div>
+        <label>Tono (más agudo = más juguetón): <span id="pitchVal">1.2</span></label>
+        <input type="range" id="pitchRange" min="0.5" max="2" step="0.05" value="1.2">
+      </div>
+    </div>
+    <button id="testVoiceBtn">▶ Probar voz</button>
+  </div>
+  <p class="sub">Los pedidos aparecen en orden de llegada en su estación. Presiona "Listo" al terminar uno.</p>
+
+  <div class="stations">
+    <div class="station chaufero">
+      <h2>🍚 Chaufero <span class="scount" id="cnt-chaufero">0</span></h2>
+      <div class="queue" id="queue-chaufero"></div>
+      <div class="empty" id="empty-chaufero" style="display:none">Sin pedidos 🎉</div>
+    </div>
+    <div class="station frituras">
+      <h2>🍤 Frituras <span class="scount" id="cnt-frituras">0</span></h2>
+      <div class="queue" id="queue-frituras"></div>
+      <div class="empty" id="empty-frituras" style="display:none">Sin pedidos 🎉</div>
+    </div>
+    <div class="station saltado">
+      <h2>🥘 Saltado <span class="scount" id="cnt-saltado">0</span></h2>
+      <div class="queue" id="queue-saltado"></div>
+      <div class="empty" id="empty-saltado" style="display:none">Sin pedidos 🎉</div>
+    </div>
+  </div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// El botón de "Activar sonido" se bindea ANTES de tocar Firebase, para que
+// nunca se quede trabado aunque la red bloquee Firebase (algunos wifis de
+// tiendas bloquean dominios como gstatic.com/firebaseio.com).
+$('unlockBtn').onclick = () => {
+  // Ocultar el overlay PRIMERO, sin importar si el audio falla
+  $('unlockBg').style.display = 'none';
+  // Intentar activar audio/voz (puede fallar silenciosamente en algunos Samsung)
+  try{
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if(AudioCtx){ const ctx = new AudioCtx(); ctx.resume().catch(()=>{}); }
+  }catch(e){}
+  try{
+    if(window.speechSynthesis){
+      const u = new SpeechSynthesisUtterance('Listo');
+      u.lang = 'es'; u.volume = 0.01;
+      speechSynthesis.speak(u);
+    }
+  }catch(e){}
+  // Pedir permiso de notificaciones del navegador (para ventanitas tipo Messenger en PC)
+  try{
+    if('Notification' in window && Notification.permission === 'default'){
+      Notification.requestPermission();
+    }
+  }catch(e){}
+  // Wake lock para mantener pantalla encendida
+  try{
+    if('wakeLock' in navigator){
+      navigator.wakeLock.request('screen').then(wl => { wakeLock = wl; }).catch(()=>{});
+    }
+  }catch(e){}
+};
+
+const firebaseConfig = {
+  apiKey: "AIzaSyARmR4JyJXwaleuEHws1cfVfhgZyGClKi8",
+  authDomain: "chifa-pedidos.firebaseapp.com",
+  databaseURL: "https://chifa-pedidos-default-rtdb.firebaseio.com",
+  projectId: "chifa-pedidos",
+  storageBucket: "chifa-pedidos.firebasestorage.app",
+  messagingSenderId: "692981905741",
+  appId: "1:692981905741:web:5e2c28ac898f5429141f04"
+};
+
+let firebaseOk = false;
+let db, ordersRef, statsRef, timeStatsRef;
+try{
+  if(typeof firebase === 'undefined'){
+    throw new Error('El SDK de Firebase no cargó (script bloqueado por la red/wifi).');
+  }
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+  ordersRef = db.ref('orders');
+  statsRef = db.ref('stats');
+  timeStatsRef = db.ref('time_stats');
+  firebaseOk = true;
+}catch(e){
+  mostrarErrorConexion(e.message);
+}
+
+function mostrarErrorConexion(msg){
+  const banner = document.createElement('div');
+  banner.style.position = 'fixed';
+  banner.style.top = '0'; banner.style.left = '0'; banner.style.right = '0';
+  banner.style.background = '#7a1d1d'; banner.style.color = '#fff';
+  banner.style.padding = '14px 16px'; banner.style.fontSize = '13px';
+  banner.style.zIndex = '500'; banner.style.textAlign = 'center';
+  banner.textContent = '⚠️ No se pudo conectar al servidor de pedidos. Revisa el wifi de este dispositivo ' +
+    '(si es la red de la tienda, puede estar bloqueando el servicio) o usa datos móviles. Detalle: ' + msg;
+  document.body.appendChild(banner);
+}
+
+let ordersObj = {};
+let prevOrdersObj = {};
+let seenIds = new Set();
+let soundOn = true;
+let firstSnapshot = true;
+let wakeLock = null;
+
+let allSpanishVoices = [];
+let spanishVoice = null;
+let voiceRate = parseFloat(localStorage.getItem('voiceRate_v1')) || 1.0;
+let voicePitch = parseFloat(localStorage.getItem('voicePitch_v1')) || 1.2;
+const savedVoiceName = localStorage.getItem('voiceName_v1') || null;
+
+function pickSpanishVoice(){
+  try{
+    const voices = speechSynthesis.getVoices();
+    allSpanishVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('es'));
+    if(allSpanishVoices.length === 0) allSpanishVoices = voices; // fallback si no hay voces es-*
+
+    if(savedVoiceName){
+      spanishVoice = allSpanishVoices.find(v => v.name === savedVoiceName) || null;
+    }
+    if(!spanishVoice){
+      spanishVoice = allSpanishVoices.find(v => v.lang === 'es-PE')
+        || allSpanishVoices.find(v => /female|mujer/i.test(v.name))
+        || allSpanishVoices[0] || null;
+    }
+    poblarSelectorVoces();
+  }catch(e){}
+}
+pickSpanishVoice();
+if('speechSynthesis' in window){
+  speechSynthesis.onvoiceschanged = pickSpanishVoice;
+}
+
+function poblarSelectorVoces(){
+  const sel = $('voiceSelect');
+  sel.innerHTML = '';
+  allSpanishVoices.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = v.name + ' (' + v.lang + ')';
+    if(spanishVoice && v.name === spanishVoice.name) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  $('rateRange').value = voiceRate;
+  $('rateVal').textContent = voiceRate.toFixed(2);
+  $('pitchRange').value = voicePitch;
+  $('pitchVal').textContent = voicePitch.toFixed(2);
+}
+
+$('voiceBtn').onclick = () => $('voicePanel').classList.toggle('show');
+
+$('voiceSelect').onchange = (e) => {
+  spanishVoice = allSpanishVoices.find(v => v.name === e.target.value) || null;
+  if(spanishVoice) localStorage.setItem('voiceName_v1', spanishVoice.name);
+};
+$('rateRange').oninput = (e) => {
+  voiceRate = parseFloat(e.target.value);
+  $('rateVal').textContent = voiceRate.toFixed(2);
+  localStorage.setItem('voiceRate_v1', voiceRate);
+};
+$('pitchRange').oninput = (e) => {
+  voicePitch = parseFloat(e.target.value);
+  $('pitchVal').textContent = voicePitch.toFixed(2);
+  localStorage.setItem('voicePitch_v1', voicePitch);
+};
+
+function speakOne(text, onDone, pitchOverride, rateOverride){
+  try{
+    const u = new SpeechSynthesisUtterance(text);
+    if(spanishVoice) u.voice = spanishVoice;
+    u.lang = (spanishVoice && spanishVoice.lang) || 'es-PE';
+    u.rate = rateOverride != null ? rateOverride : voiceRate;
+    u.pitch = pitchOverride != null ? pitchOverride : voicePitch;
+    u.volume = 1;
+    u.onend = () => onDone && onDone();
+    u.onerror = () => onDone && onDone();
+    speechSynthesis.speak(u);
+  }catch(e){ onDone && onDone(); }
+}
+
+$('testVoiceBtn').onclick = () => {
+  try{ speechSynthesis.cancel(); }catch(e){}
+  speakOne(fraseAleatoria('un', 'Chaufa'));
+};
+
+// --- Anuncio: cada pedido nuevo se canta UNA sola vez (no en bucle).
+// Las frases son variadas para que no suene repetitivo. El botón "Recuento"
+// permite volver a escuchar todos los pendientes actuales cuando se quiera.
+const FRASES = [
+  (art, label) => art.charAt(0).toUpperCase() + art.slice(1) + ' ' + label + ', por favor.',
+  (art, label) => 'Pedido nuevo: ' + art + ' ' + label + '.',
+  (art, label) => 'Cocina, atento a ' + art + ' ' + label + '.',
+  (art, label) => '¡Vamos! ' + art + ' ' + label + ', cuando puedan.'
+];
+
+function fraseAleatoria(art, label){
+  const f = FRASES[Math.floor(Math.random() * FRASES.length)];
+  return f(art || 'un', label);
+}
+
+let speechChain = Promise.resolve();
+
+function encolarAnuncio(art, label){
+  speechChain = speechChain.then(() => new Promise((resolve) => {
+    if(!soundOn){ resolve(); return; }
+    // Pequeña variación aleatoria de tono/velocidad en cada anuncio: ayuda a que
+    // no suene siempre idéntico, sobre todo en celulares con pocas voces instaladas.
+    const jitterPitch = Math.max(0.5, Math.min(2, voicePitch + (Math.random()*0.3 - 0.15)));
+    const jitterRate = Math.max(0.6, Math.min(1.4, voiceRate + (Math.random()*0.16 - 0.08)));
+    speakOne(fraseAleatoria(art, label), resolve, jitterPitch, jitterRate);
+  }));
+}
+
+function pendientesActuales(){
+  return getOrdersArray().filter(o => o.status === 'pending').sort((a,b)=>a.createdAt-b.createdAt);
+}
+
+$('recuentoBtn').onclick = () => {
+  const pendings = pendientesActuales();
+  if(pendings.length === 0){
+    showQuickToast('No hay pedidos pendientes 🎉');
+    return;
+  }
+  pendings.forEach(o => encolarAnuncio(o.art, o.label));
+};
+
+function showQuickToast(text){
+  let t = document.getElementById('quickToast');
+  if(!t){
+    t = document.createElement('div');
+    t.id = 'quickToast';
+    t.style.position = 'fixed';
+    t.style.bottom = '20px';
+    t.style.left = '50%';
+    t.style.transform = 'translateX(-50%)';
+    t.style.background = '#2e7d4f';
+    t.style.color = '#fff';
+    t.style.padding = '10px 18px';
+    t.style.borderRadius = '8px';
+    t.style.fontSize = '13px';
+    t.style.zIndex = '300';
+    document.body.appendChild(t);
+  }
+  t.textContent = text;
+  t.style.display = 'block';
+  clearTimeout(t._hideTimer);
+  t._hideTimer = setTimeout(()=>{ t.style.display = 'none'; }, 2500);
+}
+
+function actualizarBtnNotif(){
+  if(!('Notification' in window)){
+    $('notifBtn').textContent = '🔕 Notif: no soportado';
+    $('notifBtn').style.opacity = '0.4';
+    return;
+  }
+  const p = Notification.permission;
+  if(p === 'granted'){
+    $('notifBtn').textContent = '🔔 Notif: ON';
+    $('notifBtn').style.color = '#a8f0c0';
+    $('notifBtn').style.borderColor = '#3a8c5a';
+  } else if(p === 'denied'){
+    $('notifBtn').textContent = '🔕 Notif: bloqueado';
+    $('notifBtn').style.color = '#ff9b9b';
+    $('notifBtn').style.borderColor = '#b53030';
+  } else {
+    $('notifBtn').textContent = '🔔 Notif: activar';
+    $('notifBtn').style.color = '#ffe1a3';
+    $('notifBtn').style.borderColor = '#caa86a';
+  }
+}
+actualizarBtnNotif();
+
+$('notifBtn').onclick = () => {
+  if(!('Notification' in window)){
+    alert('Tu navegador no soporta notificaciones de escritorio.');
+    return;
+  }
+  if(Notification.permission === 'granted'){
+    // Mandar una notif de prueba para confirmar que funciona
+    new Notification('✅ Notificaciones activas', {
+      body: 'Las ventanitas de pedidos están funcionando.',
+      silent: true
+    });
+    return;
+  }
+  if(Notification.permission === 'denied'){
+    alert('Las notificaciones están bloqueadas en este navegador.\n\nPara activarlas:\n1. Haz clic en el ícono de candado 🔒 en la barra de direcciones.\n2. Busca "Notificaciones" y cámbialo a "Permitir".\n3. Recarga la página.');
+    return;
+  }
+  Notification.requestPermission().then(actualizarBtnNotif);
+};
+
+$('fullscreenBtn').onclick = () => {
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen().catch(()=>{
+      alert('Tu navegador no permite pantalla completa aquí. En iPhone, usa "Agregar a pantalla de inicio" desde el menú de compartir de Safari.');
+    });
+  } else {
+    document.exitFullscreen();
+  }
+};
+
+$('clearAllBtn').onclick = () => {
+  if(!firebaseOk){ alert('No hay conexión al servidor de pedidos.'); return; }
+  if(confirm('¿Vaciar TODA la cola de pedidos (caja y cocina)? Esto no se puede deshacer.')){
+    ordersRef.remove();
+    try{ speechSynthesis.cancel(); }catch(e){}
+    speechChain = Promise.resolve();
+  }
+};
+
+$('soundToggle').onclick = () => {
+  soundOn = !soundOn;
+  $('soundToggle').textContent = soundOn ? '🔊 Sonido: ON' : '🔇 Sonido: OFF';
+  $('soundToggle').classList.toggle('off', !soundOn);
+  if(!soundOn){
+    try{ speechSynthesis.cancel(); }catch(e){}
+  }
+};
+
+function notificar(label, station){
+  try{
+    if(!('Notification' in window)) return;
+    if(Notification.permission !== 'granted') return;
+    const stationNames = {chaufero:'🍚 Chaufero', frituras:'🍤 Frituras', saltado:'🥘 Saltado'};
+    const n = new Notification('🔔 Nuevo pedido — ' + (stationNames[station] || 'Cocina'), {
+      body: label,
+      icon: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0/assets/72x72/1f374.png',
+      badge: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0/assets/72x72/1f374.png',
+      tag: 'pedido-' + label,
+      requireInteraction: false,
+      silent: true // el sonido ya lo maneja la voz, la notif solo es visual
+    });
+    n.onclick = () => { window.focus(); n.close(); };
+    setTimeout(() => n.close(), 8000);
+  }catch(e){}
+}
+
+if(firebaseOk){
+  ordersRef.on('value', (snap) => {
+    prevOrdersObj = ordersObj;
+    ordersObj = snap.val() || {};
+    if(firstSnapshot){
+      Object.keys(ordersObj).forEach(id => seenIds.add(id));
+    } else {
+      // Anunciar y notificar (una sola vez) cada pedido que sea nuevo
+      Object.keys(ordersObj).forEach(id => {
+        const o = ordersObj[id];
+        if(o && o.status === 'pending' && !prevOrdersObj[id]){
+          encolarAnuncio(o.art, o.label);
+          notificar(o.label, o.station);
+        }
+      });
+    }
+    render();
+    firstSnapshot = false;
+  });
+}
+
+
+function getOrdersArray(){
+  return Object.keys(ordersObj).map(id => ({id, ...ordersObj[id]}));
+}
+
+const STATIONS = ['chaufero','frituras','saltado'];
+
+function render(){
+  const all = getOrdersArray().filter(o => o.status === 'pending').sort((a,b)=>a.createdAt-b.createdAt);
+  let total = 0;
+
+  STATIONS.forEach(st => {
+    const orders = all.filter(o => (o.station || 'saltado') === st);
+    total += orders.length;
+    const queue = $('queue-' + st);
+    queue.innerHTML = '';
+    $('cnt-' + st).textContent = orders.length;
+    $('empty-' + st).style.display = orders.length ? 'none' : 'block';
+
+    orders.forEach((o, idx) => {
+      const isNew = !seenIds.has(o.id);
+      const card = document.createElement('div');
+      card.className = 'card' + (isNew ? ' new-blink' : '');
+      card.style.background = o.color;
+
+      const pos = document.createElement('div');
+      pos.className = 'pos';
+      pos.textContent = idx + 1;
+      card.appendChild(pos);
+
+      const name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = o.label;
+      card.appendChild(name);
+
+      const time = document.createElement('div');
+      time.className = 'time';
+      const mins = Math.max(0, Math.round((Date.now()-o.createdAt)/60000));
+      time.textContent = mins === 0 ? 'recién' : ('hace ' + mins + ' min');
+      card.appendChild(time);
+
+      const btn = document.createElement('button');
+      btn.textContent = '✓ Listo';
+      btn.onclick = () => marcarListo(o);
+      card.appendChild(btn);
+
+      queue.appendChild(card);
+      if(isNew) seenIds.add(o.id);
+    });
+  });
+
+  $('countBadge').textContent = total;
+}
+
+function marcarListo(order){
+  if(!firebaseOk) return;
+  ordersRef.child(order.id).update({status:'ready'});
+  statsRef.child(order.panId).transaction(c => (c || 0) + 1);
+
+  const elapsedSec = Math.max(0, Math.round((Date.now() - order.createdAt) / 1000));
+  timeStatsRef.child(order.panId).transaction(cur => {
+    cur = cur || {sumSec:0, count:0, minSec:null, maxSec:null};
+    return {
+      sumSec: (cur.sumSec || 0) + elapsedSec,
+      count: (cur.count || 0) + 1,
+      minSec: cur.minSec == null ? elapsedSec : Math.min(cur.minSec, elapsedSec),
+      maxSec: cur.maxSec == null ? elapsedSec : Math.max(cur.maxSec, elapsedSec)
+    };
+  });
+  // El bot deja de nombrar este pedido apenas se quita de "pending";
+  // se descarta solo apenas se actualiza el snapshot (ver ordersRef.on arriba).
+}
+
+
+// La sincronización ahora corre por Firebase Realtime Database (ver ordersRef.on arriba).
+
+</script>
+</body>
+</html>

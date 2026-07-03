@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Caja — Tomar Pedidos</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:#1c1c1c;font-family:'Segoe UI',Arial,sans-serif;
+    display:flex;flex-direction:column;align-items:center;padding:24px 16px 60px;color:#eee}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:#999;font-size:13px;margin-bottom:18px}
+  .frame{background:linear-gradient(135deg,#8a2020,#b53030 30%,#7a1818 70%,#5c1212);
+    border-radius:16px;padding:14px;box-shadow:0 12px 30px rgba(0,0,0,.6);max-width:900px}
+  .bar{height:14px;border-radius:8px;background:linear-gradient(180deg,#e08a8a,#c95a5a);margin-bottom:12px}
+  .grid{display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(8,1fr);
+    gap:6px;background:#7d8388;border-radius:8px;padding:10px;height:430px}
+  .pan{position:relative;border-radius:6px;border:3px solid #d8dadc;
+    display:flex;align-items:center;justify-content:center;text-align:center;
+    font-size:13px;font-weight:600;color:#3a2c1d;cursor:pointer;padding:6px;
+    box-shadow:0 2px 5px rgba(0,0,0,.3);user-select:none;transition:transform .08s;overflow:hidden}
+  .pan:active{transform:scale(.95)}
+  .pan.empty{cursor:not-allowed;filter:grayscale(.65) brightness(.7);animation:emptyPulse 1.4s ease-in-out infinite}
+  .pan.empty:active{transform:none}
+  .pan.empty::after{content:"En cocina…";position:absolute;bottom:6px;left:0;right:0;
+    font-size:10px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.7)}
+  @keyframes emptyPulse{
+    0%,100%{opacity:.55}
+    50%{opacity:.85}
+  }
+  .pan .edit{position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;
+    background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;
+    font-size:11px;cursor:pointer;color:#555}
+  .toast-wrap{position:fixed;top:16px;right:16px;display:flex;flex-direction:column;gap:8px;z-index:60}
+  .toast{background:#2e7d4f;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;
+    box-shadow:0 4px 14px rgba(0,0,0,.4);animation:in .25s ease}
+  @keyframes in{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;
+    justify-content:center;z-index:50}
+  .modal-bg.show{display:flex}
+  .modal{background:#fff;color:#222;width:280px;border-radius:10px;padding:16px}
+
+  .stats-modal{
+    width:min(900px, 92vw);
+    max-height:88vh;
+    padding:22px 24px;
+    display:flex;
+    flex-direction:column;
+  }
+  .stats-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .stats-header h3{margin:0;font-size:18px;color:#222}
+  .stats-total{font-size:12px;color:#888;background:#f1f1f1;padding:4px 10px;border-radius:20px}
+  .stats-grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:14px;
+    overflow:visible;
+  }
+  .stats-station{
+    border-radius:12px;
+    padding:12px 12px 6px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .stats-station.chaufero{background:#fbf3e0;border:1px solid #e8d6a0}
+  .stats-station.frituras{background:#fdeee0;border:1px solid #f0c79a}
+  .stats-station.saltado{background:#fbe4e1;border:1px solid #e8a89f}
+  .stats-station h4{
+    margin:0 0 2px;font-size:13px;text-transform:uppercase;letter-spacing:.4px;
+    color:#5a4630;display:flex;align-items:center;gap:6px
+  }
+  .stat-card{
+    background:#fff;border-radius:8px;padding:8px 10px;
+    display:flex;flex-direction:column;gap:4px;
+    box-shadow:0 1px 3px rgba(0,0,0,.08);
+  }
+  .stat-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .stat-card-time{font-size:11px;color:#999;padding-left:1px}
+  .stat-card .sname{font-size:12.5px;font-weight:600;color:#333;line-height:1.2}
+  .stat-card .scount-wrap{display:flex;align-items:center;gap:4px;flex-shrink:0}
+  .stat-card .scount{
+    font-size:20px;font-weight:800;color:#b53030;min-width:26px;text-align:center;
+    font-variant-numeric:tabular-nums;
+  }
+  .stat-card .sbtn{
+    width:20px;height:20px;border-radius:5px;border:1px solid #ddd;background:#f7f7f7;
+    cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;color:#555
+  }
+  .stat-card .sbtn:hover{background:#eee}
+  @media (max-width:680px){
+    .stats-grid{grid-template-columns:1fr}
+  }
+  .modal label{font-size:12px;color:#555;display:block;margin:8px 0 4px}
+  .modal input[type=text]{width:100%;padding:6px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px}
+  .modal input[type=color]{width:100%;height:30px;border:none;cursor:pointer}
+  .qc-row{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+  .qc{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid rgba(0,0,0,.15)}
+  .qc.active{border-color:#222}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+  .btn{padding:6px 12px;border-radius:6px;font-size:13px;border:none;cursor:pointer}
+  .btn.cancel{background:#eee}
+  .btn.save{background:#b53030;color:#fff}
+  .stat-row{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    background:#f4f4f4;border-radius:6px;padding:6px 8px}
+  .stat-row .sname{font-size:13px;font-weight:600;color:#333}
+  .stat-row input{width:60px;padding:4px 6px;border:1px solid #ccc;border-radius:5px;font-size:13px;text-align:center}
+  .pendientes{margin-top:18px;font-size:13px;color:#bbb}
+</style>
+</head>
+<body>
+  <h1>🧾 Caja — Pedidos</h1>
+  <p class="sub">Toca un pan para enviarlo a cocina. Usa el ✎ para renombrar/cambiar color.</p>
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <button id="fullscreenBtn" style="background:#333;color:#eee;border:1px solid #555;border-radius:6px;
+      padding:5px 12px;font-size:12px;cursor:pointer">⛶ Pantalla completa</button>
+    <button id="statsBtn" style="background:#333;color:#eee;border:1px solid #555;border-radius:6px;
+      padding:5px 12px;font-size:12px;cursor:pointer">📊 Estadísticas</button>
+  </div>
+
+  <div class="frame">
+    <div class="bar"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+  <div class="pendientes" id="pendInfo">Pedidos pendientes en cocina: 0</div>
+
+  <div class="toast-wrap" id="toastWrap"></div>
+
+  <div class="modal-bg" id="statsModalBg">
+    <div class="modal stats-modal">
+      <div class="stats-header">
+        <h3>📊 Estadísticas en vivo</h3>
+        <span class="stats-total" id="statsTotal">0 platos hoy</span>
+      </div>
+      <div id="statsList" class="stats-grid"></div>
+      <div class="modal-actions" style="justify-content:space-between;margin-top:14px">
+        <button class="btn cancel" id="resetAllStatsBtn" style="background:#fde2e2;color:#a33">Reiniciar todo a 0</button>
+        <button class="btn save" id="closeStatsBtn">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="modalBg">
+    <div class="modal">
+      <h3 style="margin:0 0 4px;font-size:15px">Editar pan</h3>
+      <label>Nombre</label>
+      <input id="editName" type="text" maxlength="20">
+      <label>Artículo para la voz (ej: "Unas Papas", "Un Tipakay")</label>
+      <select id="editArt" style="width:100%;padding:6px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;margin-bottom:10px">
+        <option value="un">un</option>
+        <option value="una">una</option>
+        <option value="unos">unos</option>
+        <option value="unas">unas</option>
+      </select>
+      <label>Color</label>
+      <input id="editColor" type="color">
+      <div class="qc-row" id="qcRow"></div>
+      <div class="modal-actions">
+        <button class="btn cancel" id="cancelEdit">Cancelar</button>
+        <button class="btn save" id="saveEdit">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const QUICK_COLORS = ['#e8cc8b','#b7ddb7','#ffc09b','#f08d75','#cfa05f','#d8f0b5','#f0c450',
+  '#efa35d','#e9bd77','#9fc59f','#f1ad82','#d9bf7e','#b53030','#7a8c3a','#8a4b6b','#caa86a'];
+
+const DEFAULT_PANES = [
+  {id:'p1',  label:'Arroz chaufa', color:'#e8cc8b', col:1, r1:1, r2:6, station:'chaufero', art:'un'},
+  {id:'p2',  label:'Tequeños',     color:'#fbe4ab', col:1, r1:7, r2:8, station:'frituras', art:'unos'},
+
+  {id:'p3',  label:'Taypá',        color:'#b7ddb7', col:2, r1:1, r2:3, station:'saltado',  art:'un'},
+  {id:'p4',  label:'Fideos',       color:'#d8f0b5', col:2, r1:4, r2:6, station:'chaufero', art:'unos'},
+  {id:'p5',  label:'Salteado',     color:'#f1ad82', col:2, r1:7, r2:8, station:'saltado',  art:'un'},
+
+  {id:'p6',  label:'Tipakay',      color:'#f08d75', col:3, r1:1, r2:3, station:'saltado',  art:'un'},
+  {id:'p7',  label:'Chjaukay',     color:'#cfa05f', col:3, r1:4, r2:6, station:'saltado',  art:'un'},
+  {id:'p8',  label:'Plátano',      color:'#e9bd77', col:3, r1:7, r2:8, station:'frituras', art:'un'},
+
+  {id:'p9',  label:'Filete',       color:'#f7c7b0', col:4, r1:1, r2:2, station:'frituras', art:'un'},
+  {id:'p10', label:'Mandarin',     color:'#f7b08a', col:4, r1:3, r2:4, station:'saltado',  art:'un'},
+  {id:'p11', label:'Honey',        color:'#f3cf6e', col:4, r1:5, r2:6, station:'saltado',  art:'un'},
+  {id:'p12', label:'Huevo',        color:'#f0c450', col:4, r1:7, r2:8, station:'frituras', art:'un'},
+
+  {id:'p13', label:'Chicharron',   color:'#efa35d', col:5, r1:1, r2:3, station:'frituras', art:'un'},
+  {id:'p14', label:'Papas',        color:'#f0c450', col:5, r1:4, r2:6, station:'frituras', art:'unas'},
+  {id:'p15', label:'Alitas',       color:'#f1ad82', col:5, r1:7, r2:8, station:'frituras', art:'unas'},
+
+  {id:'p16', label:'Wantanes',     color:'#e8cc8b', col:6, r1:1, r2:6, station:'frituras', art:'unos'},
+  {id:'p17', label:'Tamarindo',    color:'#b5342f', col:6, r1:7, r2:8, station:'saltado',  art:'un'}
+];
+
+const firebaseConfig = {
+  apiKey: "AIzaSyARmR4JyJXwaleuEHws1cfVfhgZyGClKi8",
+  authDomain: "chifa-pedidos.firebaseapp.com",
+  databaseURL: "https://chifa-pedidos-default-rtdb.firebaseio.com",
+  projectId: "chifa-pedidos",
+  storageBucket: "chifa-pedidos.firebasestorage.app",
+  messagingSenderId: "692981905741",
+  appId: "1:692981905741:web:5e2c28ac898f5429141f04"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const panesRef = db.ref('panes');
+const ordersRef = db.ref('orders');
+const statsRef = db.ref('stats');
+const timeStatsRef = db.ref('time_stats');
+let statsObj = {};
+let timeStatsObj = {};
+
+document.getElementById('fullscreenBtn').onclick = () => {
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen().catch(()=>{
+      alert('Tu navegador no permite pantalla completa aquí. En iPhone, usa "Agregar a pantalla de inicio" desde el menú de compartir de Safari.');
+    });
+  } else {
+    document.exitFullscreen();
+  }
+};
+
+const $ = id => document.getElementById(id);
+
+let panes = [];
+let ordersObj = {};
+let prevOrdersObj = {};
+
+// Las versiones anteriores reusaron los mismos IDs (p1..p17) con nombres/posiciones
+// distintos, lo que mezclaba nombre viejo + posición nueva. Forzamos un reseteo
+// completo una sola vez (marcado por PANES_VERSION) para dejar todo consistente.
+const PANES_VERSION = 3;
+const versionRef = db.ref('panes_version');
+versionRef.once('value').then((vsnap) => {
+  if(vsnap.val() !== PANES_VERSION){
+    const seed = {};
+    DEFAULT_PANES.forEach(p => seed[p.id] = {
+      label:p.label, color:p.color, col:p.col, r1:p.r1, r2:p.r2, station:p.station, art:p.art
+    });
+    panesRef.set(seed).then(() => versionRef.set(PANES_VERSION));
+  }
+});
+
+panesRef.on('value', (snap) => {
+  const val = snap.val() || {};
+  panes = Object.keys(val).map(id => ({
+    id,
+    label: val[id].label,
+    color: val[id].color,
+    col: val[id].col,
+    r1: val[id].r1,
+    r2: val[id].r2,
+    station: val[id].station,
+    art: val[id].art || 'un'
+  }));
+  panes.sort((a,b) => (a.col - b.col) || (a.r1 - b.r1));
+  render();
+});
+
+ordersRef.on('value', (snap) => {
+  prevOrdersObj = ordersObj;
+  ordersObj = snap.val() || {};
+  detectReadyOrders();
+  render();
+});
+
+function detectReadyOrders(){
+  Object.keys(ordersObj).forEach(id => {
+    const o = ordersObj[id];
+    const before = prevOrdersObj[id];
+    if(o && o.status === 'ready' && (!before || before.status !== 'ready')){
+      showToast('✅ Listo: ' + o.label, '#2e7d4f');
+      // limpiar el pedido una vez avisado
+      ordersRef.child(id).remove();
+    }
+  });
+}
+
+function getOrdersArray(){
+  return Object.keys(ordersObj).map(id => ({id, ...ordersObj[id]}));
+}
+
+function savePanes(){
+  const updates = {};
+  panes.forEach(p => updates[p.id] = {
+    label:p.label, color:p.color, col:p.col, r1:p.r1, r2:p.r2, station:p.station, art:p.art
+  });
+  panesRef.set(updates);
+}
+
+function render(){
+  const grid = $('grid');
+  grid.innerHTML = '';
+  const orders = getOrdersArray();
+  const pendingPanIds = new Set(orders.filter(o => o.status === 'pending').map(o => o.panId));
+  panes.forEach(p => {
+    const div = document.createElement('div');
+    const isEmpty = pendingPanIds.has(p.id);
+    div.className = 'pan' + (isEmpty ? ' empty' : '');
+    div.style.background = p.color;
+    if(p.col)  div.style.gridColumn = p.col + ' / ' + (p.col + 1);
+    if(p.r1 && p.r2) div.style.gridRow = p.r1 + ' / ' + (p.r2 + 1);
+    div.textContent = p.label;
+    if(isEmpty){
+      div.onclick = () => showToast('"' + p.label + '" ya está en cola, espera a que cocina lo saque', '#b53030');
+    } else {
+      div.onclick = () => enviarPedido(p);
+    }
+    const edit = document.createElement('div');
+    edit.className = 'edit';
+    edit.textContent = '✎';
+    edit.onclick = (e) => { e.stopPropagation(); openEdit(p); };
+    div.appendChild(edit);
+    grid.appendChild(div);
+  });
+  updatePendInfo(orders);
+}
+
+function updatePendInfo(orders){
+  const pendientes = (orders || getOrdersArray()).filter(o => o.status === 'pending').length;
+  $('pendInfo').textContent = 'Pedidos pendientes en cocina: ' + pendientes;
+}
+
+function enviarPedido(p){
+  const orders = getOrdersArray();
+  const yaPendiente = orders.some(o => o.panId === p.id && o.status === 'pending');
+  if(yaPendiente){
+    showToast('"' + p.label + '" ya está en cola', '#b53030');
+    render();
+    return;
+  }
+  const newRef = ordersRef.push();
+  newRef.set({
+    panId: p.id,
+    label: p.label,
+    color: p.color,
+    station: p.station || 'saltado',
+    art: p.art || 'un',
+    status: 'pending',
+    createdAt: Date.now()
+  });
+  showToast('Enviado a cocina: ' + p.label, '#2e7d4f');
+}
+
+function showToast(text, color){
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.style.background = color || '#2e7d4f';
+  t.textContent = text;
+  $('toastWrap').appendChild(t);
+  setTimeout(()=> t.remove(), 4000);
+}
+
+let editingId = null;
+function openEdit(p){
+  editingId = p.id;
+  $('editName').value = p.label;
+  $('editColor').value = p.color;
+  $('editArt').value = p.art || 'un';
+  renderQc();
+  $('modalBg').classList.add('show');
+}
+function renderQc(){
+  const row = $('qcRow');
+  row.innerHTML = '';
+  QUICK_COLORS.forEach(c => {
+    const b = document.createElement('div');
+    b.className = 'qc' + (c.toLowerCase()===$('editColor').value.toLowerCase()?' active':'');
+    b.style.background = c;
+    b.onclick = () => { $('editColor').value = c; renderQc(); };
+    row.appendChild(b);
+  });
+}
+$('cancelEdit').onclick = () => $('modalBg').classList.remove('show');
+$('saveEdit').onclick = () => {
+  const p = panes.find(x => x.id === editingId);
+  if(p){
+    p.label = $('editName').value.trim() || p.label;
+    p.color = $('editColor').value;
+    p.art = $('editArt').value;
+    savePanes();
+  }
+  $('modalBg').classList.remove('show');
+};
+
+
+// La sincronización ahora corre por Firebase Realtime Database (ver panesRef.on / ordersRef.on arriba).
+
+statsRef.on('value', (snap) => {
+  statsObj = snap.val() || {};
+  if($('statsModalBg').classList.contains('show')) renderStats();
+});
+
+timeStatsRef.on('value', (snap) => {
+  timeStatsObj = snap.val() || {};
+  if($('statsModalBg').classList.contains('show')) renderStats();
+});
+
+const STATION_META = {
+  chaufero: {label:'🍚 Chaufero', cls:'chaufero'},
+  frituras: {label:'🍤 Frituras', cls:'frituras'},
+  saltado:  {label:'🥘 Saltado',  cls:'saltado'}
+};
+const STATION_ORDER = ['chaufero','frituras','saltado'];
+
+function formatTime(sec){
+  if(sec == null) return '–';
+  if(sec < 60) return sec + 's';
+  const m = Math.floor(sec / 60);
+  const s = Math.round(sec % 60);
+  return m + 'm ' + (s > 0 ? s + 's' : '');
+}
+
+function renderStats(){
+  const list = $('statsList');
+  list.innerHTML = '';
+  let total = 0;
+
+  // Determinar el producto más rápido y más lento (promedio) entre los que tengan datos
+  let fastest = null, slowest = null;
+  panes.forEach(p => {
+    const t = timeStatsObj[p.id];
+    if(t && t.count > 0){
+      const avg = t.sumSec / t.count;
+      if(!fastest || avg < fastest.avg) fastest = {id:p.id, label:p.label, avg};
+      if(!slowest || avg > slowest.avg) slowest = {id:p.id, label:p.label, avg};
+    }
+  });
+
+  STATION_ORDER.forEach(st => {
+    const panesDeEstacion = panes.filter(p => (p.station || 'saltado') === st);
+    if(panesDeEstacion.length === 0) return;
+
+    const meta = STATION_META[st];
+    const box = document.createElement('div');
+    box.className = 'stats-station ' + meta.cls;
+
+    const h4 = document.createElement('h4');
+    h4.textContent = meta.label;
+    box.appendChild(h4);
+
+    panesDeEstacion.forEach(p => {
+      const count = statsObj[p.id] || 0;
+      total += count;
+      const t = timeStatsObj[p.id];
+      const avgSec = (t && t.count > 0) ? (t.sumSec / t.count) : null;
+
+      const card = document.createElement('div');
+      card.className = 'stat-card';
+
+      const top = document.createElement('div');
+      top.className = 'stat-card-top';
+
+      const name = document.createElement('span');
+      name.className = 'sname';
+      name.textContent = p.label;
+      if(fastest && fastest.id === p.id) name.textContent += ' ⚡';
+      if(slowest && slowest.id === p.id && slowest.avg !== (fastest && fastest.avg)) name.textContent += ' 🐢';
+
+      const wrap = document.createElement('div');
+      wrap.className = 'scount-wrap';
+
+      const minus = document.createElement('button');
+      minus.className = 'sbtn';
+      minus.textContent = '–';
+      minus.onclick = () => statsRef.child(p.id).transaction(c => Math.max(0, (c || 0) - 1));
+
+      const num = document.createElement('span');
+      num.className = 'scount';
+      num.textContent = count;
+
+      const plus = document.createElement('button');
+      plus.className = 'sbtn';
+      plus.textContent = '+';
+      plus.onclick = () => statsRef.child(p.id).transaction(c => (c || 0) + 1);
+
+      wrap.appendChild(minus);
+      wrap.appendChild(num);
+      wrap.appendChild(plus);
+
+      top.appendChild(name);
+      top.appendChild(wrap);
+
+      const timeRow = document.createElement('div');
+      timeRow.className = 'stat-card-time';
+      timeRow.textContent = avgSec != null
+        ? ('⏱ Promedio: ' + formatTime(avgSec))
+        : '⏱ Sin datos aún';
+
+      card.appendChild(top);
+      card.appendChild(timeRow);
+      box.appendChild(card);
+    });
+
+    list.appendChild(box);
+  });
+
+  $('statsTotal').textContent = total + ' platos hoy';
+}
+
+$('statsBtn').onclick = () => {
+  renderStats();
+  $('statsModalBg').classList.add('show');
+};
+$('closeStatsBtn').onclick = () => $('statsModalBg').classList.remove('show');
+$('resetAllStatsBtn').onclick = () => {
+  if(confirm('¿Reiniciar TODOS los contadores y tiempos a 0? Esto no se puede deshacer.')){
+    const reset = {};
+    panes.forEach(p => reset[p.id] = 0);
+    statsRef.set(reset);
+    timeStatsRef.remove().then(renderStats);
+  }
+};
+
+</script>
+</body>
+</html>
