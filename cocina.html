@@ -104,7 +104,7 @@
     <span class="count-badge" id="countBadge">0</span>
     <span class="sound-toggle" id="soundToggle">🔊 Sonido: ON</span>
     <span class="sound-toggle" id="recuentoBtn" style="border-color:#caa86a;color:#ffe1a3">🔁 Recuento</span>
-    <span class="sound-toggle" id="notifBtn">🔔 Notif: –</span>
+    <span class="sound-toggle" id="notifBtn" style="border-color:#3a8c5a;color:#a8f0c0">🪟 Popup: ON</span>
     <span class="sound-toggle" id="voiceBtn">🎙️ Voz</span>
     <span class="sound-toggle" id="fullscreenBtn">⛶ Pantalla completa</span>
     <span class="sound-toggle" id="clearAllBtn" style="border-color:#b5342f;color:#ff9b8a">🗑 Vaciar cola</span>
@@ -147,6 +147,11 @@
 
 <script>
 const $ = id => document.getElementById(id);
+
+// Registrar Service Worker para notificaciones en background
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
 
 // El botón de "Activar sonido" se bindea ANTES de tocar Firebase, para que
 // nunca se quede trabado aunque la red bloquee Firebase (algunos wifis de
@@ -369,48 +374,7 @@ function showQuickToast(text){
   t._hideTimer = setTimeout(()=>{ t.style.display = 'none'; }, 2500);
 }
 
-function actualizarBtnNotif(){
-  if(!('Notification' in window)){
-    $('notifBtn').textContent = '🔕 Notif: no soportado';
-    $('notifBtn').style.opacity = '0.4';
-    return;
-  }
-  const p = Notification.permission;
-  if(p === 'granted'){
-    $('notifBtn').textContent = '🔔 Notif: ON';
-    $('notifBtn').style.color = '#a8f0c0';
-    $('notifBtn').style.borderColor = '#3a8c5a';
-  } else if(p === 'denied'){
-    $('notifBtn').textContent = '🔕 Notif: bloqueado';
-    $('notifBtn').style.color = '#ff9b9b';
-    $('notifBtn').style.borderColor = '#b53030';
-  } else {
-    $('notifBtn').textContent = '🔔 Notif: activar';
-    $('notifBtn').style.color = '#ffe1a3';
-    $('notifBtn').style.borderColor = '#caa86a';
-  }
-}
-actualizarBtnNotif();
-
-$('notifBtn').onclick = () => {
-  if(!('Notification' in window)){
-    alert('Tu navegador no soporta notificaciones de escritorio.');
-    return;
-  }
-  if(Notification.permission === 'granted'){
-    // Mandar una notif de prueba para confirmar que funciona
-    new Notification('✅ Notificaciones activas', {
-      body: 'Las ventanitas de pedidos están funcionando.',
-      silent: true
-    });
-    return;
-  }
-  if(Notification.permission === 'denied'){
-    alert('Las notificaciones están bloqueadas en este navegador.\n\nPara activarlas:\n1. Haz clic en el ícono de candado 🔒 en la barra de direcciones.\n2. Busca "Notificaciones" y cámbialo a "Permitir".\n3. Recarga la página.');
-    return;
-  }
-  Notification.requestPermission().then(actualizarBtnNotif);
-};
+$('notifBtn').onclick = () => notificar('Prueba de pedido', 'frituras');
 
 $('fullscreenBtn').onclick = () => {
   if(!document.fullscreenElement){
@@ -440,23 +404,99 @@ $('soundToggle').onclick = () => {
   }
 };
 
+// Cola de pedidos pendientes de mostrar en la ventana flotante
+let popupQueue = [];
+let popupWin = null;
+
 function notificar(label, station){
-  try{
-    if(!('Notification' in window)) return;
-    if(Notification.permission !== 'granted') return;
-    const stationNames = {chaufero:'🍚 Chaufero', frituras:'🍤 Frituras', saltado:'🥘 Saltado'};
-    const n = new Notification('🔔 Nuevo pedido — ' + (stationNames[station] || 'Cocina'), {
-      body: label,
-      icon: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0/assets/72x72/1f374.png',
-      badge: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0/assets/72x72/1f374.png',
-      tag: 'pedido-' + label,
-      requireInteraction: false,
-      silent: true // el sonido ya lo maneja la voz, la notif solo es visual
-    });
-    n.onclick = () => { window.focus(); n.close(); };
-    setTimeout(() => n.close(), 8000);
-  }catch(e){}
+  popupQueue.push({label, station});
+  mostrarPopupFlotante();
 }
+
+function mostrarPopupFlotante(){
+  // Si ya hay una ventana abierta y viva, solo actualizamos su contenido
+  if(popupWin && !popupWin.closed){
+    try{ actualizarContenidoPopup(); }catch(e){}
+    return;
+  }
+  // Calcular posición: esquina inferior derecha de la pantalla
+  const w = 320, h = 420;
+  const left = window.screen.availWidth - w - 20;
+  const top = window.screen.availHeight - h - 60;
+  popupWin = window.open('', 'pedidos_popup',
+    `width=${w},height=${h},left=${left},top=${top},resizable=no,scrollbars=no,` +
+    `status=no,toolbar=no,menubar=no,location=no`
+  );
+  if(!popupWin){ return; } // bloqueador de popups activo
+  actualizarContenidoPopup();
+}
+
+function actualizarContenidoPopup(){
+  if(!popupWin || popupWin.closed) return;
+  const stationColors = {chaufero:'#c8a84b', frituras:'#c87d3a', saltado:'#b53030'};
+  const stationNames  = {chaufero:'🍚 Chaufero', frituras:'🍤 Frituras', saltado:'🥘 Saltado'};
+
+  const items = popupQueue.map((p,i) => `
+    <div style="background:#1e1e1e;border-radius:10px;padding:12px 14px;
+      border-left:4px solid ${stationColors[p.station]||'#888'};
+      display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <div>
+        <div style="font-size:11px;color:#aaa;margin-bottom:2px">${stationNames[p.station]||'Cocina'}</div>
+        <div style="font-size:16px;font-weight:700;color:#fff">${p.label}</div>
+      </div>
+      <button onclick="parent.cerrarItem(${i})" style="background:#2e7d4f;color:#fff;border:none;
+        border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;white-space:nowrap">✓ Visto</button>
+    </div>
+  `).join('');
+
+  const html = `<!DOCTYPE html><html><head>
+    <meta charset="UTF-8">
+    <title>🔔 Pedidos nuevos</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{background:#101010;font-family:'Segoe UI',Arial,sans-serif;
+        display:flex;flex-direction:column;height:100vh;overflow:hidden}
+      .header{background:#b53030;padding:10px 14px;display:flex;
+        align-items:center;justify-content:space-between;flex-shrink:0}
+      .header span{color:#fff;font-weight:700;font-size:14px}
+      .badge{background:#fff;color:#b53030;border-radius:50%;
+        width:22px;height:22px;display:inline-flex;align-items:center;
+        justify-content:center;font-size:12px;font-weight:800}
+      .list{padding:10px;display:flex;flex-direction:column;
+        gap:8px;overflow-y:auto;flex:1}
+      .cerrar-todo{margin:8px;background:#333;color:#eee;border:none;
+        border-radius:8px;padding:8px;font-size:12px;cursor:pointer;width:calc(100% - 16px)}
+      .cerrar-todo:hover{background:#444}
+    </style>
+  </head><body>
+    <div class="header">
+      <span>🔔 Nuevos pedidos <span class="badge">${popupQueue.length}</span></span>
+    </div>
+    <div class="list">${items}</div>
+    <button class="cerrar-todo" onclick="parent.cerrarTodo()">✓ Marcar todos como vistos</button>
+  </body></html>`;
+
+  popupWin.document.open();
+  popupWin.document.write(html);
+  popupWin.document.close();
+  popupWin.focus();
+}
+
+window.cerrarItem = function(idx){
+  popupQueue.splice(idx, 1);
+  if(popupQueue.length === 0){
+    if(popupWin && !popupWin.closed) popupWin.close();
+    popupWin = null;
+  } else {
+    actualizarContenidoPopup();
+  }
+};
+
+window.cerrarTodo = function(){
+  popupQueue = [];
+  if(popupWin && !popupWin.closed) popupWin.close();
+  popupWin = null;
+};
 
 if(firebaseOk){
   ordersRef.on('value', (snap) => {
