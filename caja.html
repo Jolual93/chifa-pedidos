@@ -107,6 +107,23 @@
   .stat-row .sname{font-size:13px;font-weight:600;color:#333}
   .stat-row input{width:60px;padding:4px 6px;border:1px solid #ccc;border-radius:5px;font-size:13px;text-align:center}
   .pendientes{margin-top:18px;font-size:13px;color:#bbb}
+  .cola-wrap{margin-top:14px;width:100%;max-width:700px}
+  .cola-wrap h3{font-size:14px;color:#bbb;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .cola-list{display:flex;flex-direction:column;gap:8px}
+  .cola-card{display:flex;align-items:center;gap:10px;background:#1e1e1e;
+    border-radius:10px;padding:10px 14px;border-left:4px solid #555}
+  .cola-card.chaufero{border-color:#c8a84b}
+  .cola-card.frituras{border-color:#c87d3a}
+  .cola-card.saltado{border-color:#b53030}
+  .cola-card .c-info{flex:1}
+  .cola-card .c-name{font-size:14px;font-weight:700;color:#fff}
+  .cola-card .c-meta{font-size:11px;color:#888;margin-top:2px}
+  .cola-card .c-pos{width:26px;height:26px;border-radius:50%;background:#333;
+    color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .cola-card .btn-listo{background:#2e7d4f;color:#fff;border:none;border-radius:8px;
+    padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0}
+  .cola-card .btn-listo:hover{background:#3a9d62}
+  .cola-empty{color:#555;font-size:13px;padding:10px 0}
 </style>
 </head>
 <body>
@@ -123,7 +140,10 @@
     <div class="bar"></div>
     <div class="grid" id="grid"></div>
   </div>
-  <div class="pendientes" id="pendInfo">Pedidos pendientes en cocina: 0</div>
+  <div class="cola-wrap">
+    <h3>⏳ En cocina <span id="pendBadge" style="background:#b53030;color:#fff;border-radius:12px;padding:2px 8px;font-size:12px">0</span></h3>
+    <div class="cola-list" id="colaList"></div>
+  </div>
 
   <div class="toast-wrap" id="toastWrap"></div>
 
@@ -207,6 +227,7 @@ const panesRef = db.ref('panes');
 const ordersRef = db.ref('orders');
 const statsRef = db.ref('stats');
 const timeStatsRef = db.ref('time_stats');
+const historyRef = db.ref('history');
 let statsObj = {};
 let timeStatsObj = {};
 
@@ -313,12 +334,69 @@ function render(){
     div.appendChild(edit);
     grid.appendChild(div);
   });
-  updatePendInfo(orders);
+  renderCola(orders);
 }
 
-function updatePendInfo(orders){
-  const pendientes = (orders || getOrdersArray()).filter(o => o.status === 'pending').length;
-  $('pendInfo').textContent = 'Pedidos pendientes en cocina: ' + pendientes;
+function guardarEnHistorial(order, elapsedSec){
+  const fecha = new Date().toISOString().slice(0,10); // YYYY-MM-DD
+  historyRef.child(fecha).push({
+    label: order.label,
+    panId: order.panId,
+    station: order.station,
+    elapsedSec,
+    doneAt: Date.now()
+  });
+}
+
+function marcarListoDesdeCaja(order){
+  const elapsedSec = Math.max(0, Math.round((Date.now() - order.createdAt) / 1000));
+  ordersRef.child(order.id).update({status:'ready', doneAt: Date.now(), marcadoPor:'caja'});
+  statsRef.child(order.panId).transaction(c => (c || 0) + 1);
+  timeStatsRef.child(order.panId).transaction(cur => {
+    cur = cur || {sumSec:0, count:0, minSec:null, maxSec:null};
+    return {
+      sumSec: (cur.sumSec||0) + elapsedSec,
+      count: (cur.count||0) + 1,
+      minSec: cur.minSec == null ? elapsedSec : Math.min(cur.minSec, elapsedSec),
+      maxSec: cur.maxSec == null ? elapsedSec : Math.max(cur.maxSec, elapsedSec)
+    };
+  });
+  guardarEnHistorial(order, elapsedSec);
+  showToast('✅ Listo: ' + order.label, '#2e7d4f');
+}
+
+function renderCola(orders){
+  const all = (orders || getOrdersArray()).filter(o => o.status === 'pending')
+    .sort((a,b) => a.createdAt - b.createdAt);
+  $('pendBadge').textContent = all.length;
+  const list = $('colaList');
+  list.innerHTML = '';
+  if(all.length === 0){
+    list.innerHTML = '<div class="cola-empty">Sin pedidos pendientes 🎉</div>';
+    return;
+  }
+  const stClasses = {chaufero:'chaufero', frituras:'frituras', saltado:'saltado'};
+  const stNames = {chaufero:'🍚 Chaufero', frituras:'🍤 Frituras', saltado:'🥘 Saltado'};
+  all.forEach((o, idx) => {
+    const mins = Math.max(0, Math.round((Date.now() - o.createdAt) / 60000));
+    const card = document.createElement('div');
+    card.className = 'cola-card ' + (stClasses[o.station] || '');
+    const pos = document.createElement('div');
+    pos.className = 'c-pos';
+    pos.textContent = idx + 1;
+    const info = document.createElement('div');
+    info.className = 'c-info';
+    info.innerHTML = `<div class="c-name">${o.label}</div>
+      <div class="c-meta">${stNames[o.station]||'Cocina'} · ${mins === 0 ? 'recién' : 'hace '+mins+' min'}</div>`;
+    const btn = document.createElement('button');
+    btn.className = 'btn-listo';
+    btn.textContent = '✓ Listo';
+    btn.onclick = () => marcarListoDesdeCaja(o);
+    card.appendChild(pos);
+    card.appendChild(info);
+    card.appendChild(btn);
+    list.appendChild(card);
+  });
 }
 
 function enviarPedido(p){

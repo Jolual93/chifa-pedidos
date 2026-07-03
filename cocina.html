@@ -89,9 +89,39 @@
     margin-top:10px; background:#2e7d4f; color:#fff; border:none; border-radius:6px;
     padding:7px 14px; font-size:13px; cursor:pointer;
   }
+  .station h2{margin:0 0 10px;font-size:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px}
+  .encargado-badge{font-size:11px;background:rgba(255,255,255,.12);border-radius:12px;
+    padding:2px 8px;color:#eee;font-weight:400;cursor:pointer}
+  .encargado-badge:hover{background:rgba(255,255,255,.22)}
+  .turno-bg{position:fixed;inset:0;background:#0d0d0d;z-index:300;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px}
+  .turno-bg h2{color:#fff;font-size:20px;margin:0}
+  .turno-bg p{color:#aaa;font-size:13px;margin:0;text-align:center}
+  .turno-stations{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;width:100%;max-width:700px}
+  .turno-card{flex:1;min-width:180px;background:#1a1a1a;border-radius:12px;padding:16px;
+    border:2px solid #333;display:flex;flex-direction:column;gap:10px}
+  .turno-card.chaufero{border-color:#c8a84b}
+  .turno-card.frituras{border-color:#c87d3a}
+  .turno-card.saltado{border-color:#b53030}
+  .turno-card h3{margin:0;font-size:14px;color:#eee}
+  .turno-card select{width:100%;padding:8px;border-radius:8px;border:1px solid #444;
+    background:#252525;color:#fff;font-size:14px}
+  .turno-btn{background:#b53030;color:#fff;border:none;border-radius:10px;
+    padding:14px 32px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px}
+  .turno-btn:hover{background:#d04040}
+  .link-admin{color:#caa86a;font-size:12px;text-decoration:none;margin-top:4px}
 </style>
 </head>
 <body>
+  <!-- Overlay de asignación de turno -->
+  <div class="turno-bg" id="turnoBg">
+    <div style="font-size:36px">👨‍🍳</div>
+    <h2>Iniciar turno — Cocina</h2>
+    <p>Asigna un encargado a cada estación antes de comenzar</p>
+    <div class="turno-stations" id="turnoStations"></div>
+    <button class="turno-btn" id="turnoIniciarBtn">Iniciar turno</button>
+    <a href="admin.html" class="link-admin">📊 Ver panel de administración</a>
+  </div>
   <div class="unlock-bg" id="unlockBg">
     <div style="font-size:40px">🔔</div>
     <div style="color:#eee;font-size:15px;text-align:center;max-width:280px">
@@ -129,17 +159,23 @@
 
   <div class="stations">
     <div class="station chaufero">
-      <h2>🍚 Chaufero <span class="scount" id="cnt-chaufero">0</span></h2>
+      <h2>🍚 Chaufero <span class="scount" id="cnt-chaufero">0</span>
+        <span class="encargado-badge" id="badge-chaufero" onclick="cambiarEncargado('chaufero')">— sin asignar</span>
+      </h2>
       <div class="queue" id="queue-chaufero"></div>
       <div class="empty" id="empty-chaufero" style="display:none">Sin pedidos 🎉</div>
     </div>
     <div class="station frituras">
-      <h2>🍤 Frituras <span class="scount" id="cnt-frituras">0</span></h2>
+      <h2>🍤 Frituras <span class="scount" id="cnt-frituras">0</span>
+        <span class="encargado-badge" id="badge-frituras" onclick="cambiarEncargado('frituras')">— sin asignar</span>
+      </h2>
       <div class="queue" id="queue-frituras"></div>
       <div class="empty" id="empty-frituras" style="display:none">Sin pedidos 🎉</div>
     </div>
     <div class="station saltado">
-      <h2>🥘 Saltado <span class="scount" id="cnt-saltado">0</span></h2>
+      <h2>🥘 Saltado <span class="scount" id="cnt-saltado">0</span>
+        <span class="encargado-badge" id="badge-saltado" onclick="cambiarEncargado('saltado')">— sin asignar</span>
+      </h2>
       <div class="queue" id="queue-saltado"></div>
       <div class="empty" id="empty-saltado" style="display:none">Sin pedidos 🎉</div>
     </div>
@@ -206,6 +242,7 @@ try{
   ordersRef = db.ref('orders');
   statsRef = db.ref('stats');
   timeStatsRef = db.ref('time_stats');
+  turnoRef = db.ref('turno_actual');
   firebaseOk = true;
 }catch(e){
   mostrarErrorConexion(e.message);
@@ -222,6 +259,12 @@ function mostrarErrorConexion(msg){
     '(si es la red de la tienda, puede estar bloqueando el servicio) o usa datos móviles. Detalle: ' + msg;
   document.body.appendChild(banner);
 }
+
+// Lista de encargados — editar aquí para agregar/quitar personal
+const STAFF = ['Jhon', 'Marco', 'Luis', 'Ana', 'Carlos', 'Rosa', 'Pedro', 'María'];
+const STATION_LABELS = {chaufero:'🍚 Chaufero', frituras:'🍤 Frituras', saltado:'🥘 Saltado'};
+
+let turnoRef, encargadosObj = {};
 
 let ordersObj = {};
 let prevOrdersObj = {};
@@ -275,6 +318,85 @@ function poblarSelectorVoces(){
 }
 
 $('voiceBtn').onclick = () => $('voicePanel').classList.toggle('show');
+
+// ---- Overlay de inicio de turno ----
+function buildTurnoOverlay(){
+  const wrap = $('turnoStations');
+  wrap.innerHTML = '';
+  ['chaufero','frituras','saltado'].forEach(st => {
+    const card = document.createElement('div');
+    card.className = 'turno-card ' + st;
+    const h3 = document.createElement('h3');
+    h3.textContent = STATION_LABELS[st];
+    const sel = document.createElement('select');
+    sel.id = 'turno-sel-' + st;
+    const optNone = document.createElement('option');
+    optNone.value = '';
+    optNone.textContent = '— Sin asignar —';
+    sel.appendChild(optNone);
+    STAFF.forEach(name => {
+      const o = document.createElement('option');
+      o.value = name; o.textContent = name;
+      if(encargadosObj[st] === name) o.selected = true;
+      sel.appendChild(o);
+    });
+    card.appendChild(h3);
+    card.appendChild(sel);
+    wrap.appendChild(card);
+  });
+}
+
+function actualizarBadges(){
+  ['chaufero','frituras','saltado'].forEach(st => {
+    const badge = $('badge-' + st);
+    if(badge) badge.textContent = encargadosObj[st] ? ('👤 ' + encargadosObj[st]) : '— sin asignar';
+  });
+}
+
+window.cambiarEncargado = function(st){
+  const nombre = prompt('Cambiar encargado de ' + STATION_LABELS[st] + ':\n\nPersonal disponible:\n' +
+    STAFF.map((n,i) => (i+1)+'. '+n).join('\n') + '\n\nEscribe el nombre exacto o déjalo vacío para quitar:');
+  if(nombre === null) return;
+  const validado = STAFF.find(n => n.toLowerCase() === nombre.trim().toLowerCase()) || '';
+  encargadosObj[st] = validado;
+  actualizarBadges();
+  if(firebaseOk) turnoRef.child('encargados').set(encargadosObj);
+};
+
+$('turnoIniciarBtn').onclick = () => {
+  ['chaufero','frituras','saltado'].forEach(st => {
+    const sel = document.getElementById('turno-sel-' + st);
+    if(sel) encargadosObj[st] = sel.value || '';
+  });
+  actualizarBadges();
+  if(firebaseOk){
+    const turnoData = {
+      encargados: encargadosObj,
+      inicio: Date.now(),
+      fecha: new Date().toLocaleDateString('es-PE')
+    };
+    turnoRef.set(turnoData);
+  }
+  $('turnoBg').style.display = 'none';
+};
+
+// Cargar encargados actuales y lista de personal desde Firebase al abrir
+if(firebaseOk){
+  db.ref('staff_list').once('value', snap => {
+    const lista = snap.val();
+    if(lista && lista.length > 0) STAFF.splice(0, STAFF.length, ...lista);
+  });
+  turnoRef.once('value', snap => {
+    const data = snap.val();
+    if(data && data.encargados) encargadosObj = data.encargados;
+    buildTurnoOverlay();
+    actualizarBadges();
+  }).catch(() => buildTurnoOverlay());
+} else {
+  buildTurnoOverlay();
+}
+
+
 
 $('voiceSelect').onchange = (e) => {
   spanishVoice = allSpanishVoices.find(v => v.name === e.target.value) || null;
@@ -575,10 +697,13 @@ function render(){
 
 function marcarListo(order){
   if(!firebaseOk) return;
-  ordersRef.child(order.id).update({status:'ready'});
+  const encargado = encargadosObj[order.station] || 'Sin asignar';
+  ordersRef.child(order.id).update({status:'ready', encargado, doneAt: Date.now()});
   statsRef.child(order.panId).transaction(c => (c || 0) + 1);
 
   const elapsedSec = Math.max(0, Math.round((Date.now() - order.createdAt) / 1000));
+
+  // Tiempo por producto
   timeStatsRef.child(order.panId).transaction(cur => {
     cur = cur || {sumSec:0, count:0, minSec:null, maxSec:null};
     return {
@@ -588,8 +713,24 @@ function marcarListo(order){
       maxSec: cur.maxSec == null ? elapsedSec : Math.max(cur.maxSec, elapsedSec)
     };
   });
-  // El bot deja de nombrar este pedido apenas se quita de "pending";
-  // se descarta solo apenas se actualiza el snapshot (ver ordersRef.on arriba).
+
+  // Métricas por encargado
+  const staffKey = encargado.replace(/[^a-zA-Z0-9_]/g, '_');
+  db.ref('staff_stats/' + staffKey + '/' + order.station).transaction(cur => {
+    cur = cur || {count:0, sumSec:0};
+    return {count:(cur.count||0)+1, sumSec:(cur.sumSec||0)+elapsedSec, nombre:encargado};
+  });
+
+  // Guardar en historial por fecha
+  const fecha = new Date().toISOString().slice(0,10);
+  db.ref('history/' + fecha).push({
+    label: order.label,
+    panId: order.panId,
+    station: order.station,
+    encargado,
+    elapsedSec,
+    doneAt: Date.now()
+  });
 }
 
 
