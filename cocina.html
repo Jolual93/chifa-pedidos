@@ -4,738 +4,360 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Cocina — Cola de Pedidos</title>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
-  *{box-sizing:border-box}
-  body{margin:0;min-height:100vh;background:#101010;font-family:'Segoe UI',Arial,sans-serif;
-    display:flex;flex-direction:column;align-items:center;padding:24px 16px 60px;color:#eee}
-  h1{font-size:22px;margin:0 0 4px}
-  .sub{color:#999;font-size:13px;margin-bottom:20px}
-  .queue{display:flex;flex-wrap:wrap;gap:14px;max-width:1100px;justify-content:flex-start;
-    align-content:flex-start;min-height:200px}
-  .stations{display:flex;gap:16px;width:100%;max-width:1300px;align-items:flex-start;flex-wrap:wrap}
-  .station{flex:1;min-width:280px;background:#1a1a1a;border-radius:12px;padding:14px;
-    border:2px solid #333}
-  .station h2{margin:0 0 10px;font-size:16px;display:flex;align-items:center;justify-content:space-between}
-  .station .scount{background:#444;border-radius:14px;padding:2px 10px;font-size:13px}
-  .station.chaufero{border-color:#caa86a}
-  .station.frituras{border-color:#efa35d}
-  .station.saltado{border-color:#b5342f}
-  .card{position:relative;width:100%;min-height:110px;border-radius:10px;border:4px solid #d8dadc;
-    display:flex;flex-direction:column;align-items:center;justify-content:space-between;
-    padding:10px;box-shadow:0 4px 12px rgba(0,0,0,.4);color:#2c2014;margin-bottom:12px}
-  .card .pos{position:absolute;top:-12px;left:-12px;width:28px;height:28px;border-radius:50%;
-    background:#222;color:#fff;display:flex;align-items:center;justify-content:center;
-    font-size:13px;font-weight:700;border:2px solid #fff}
-  .card .name{font-size:16px;font-weight:700;text-align:center;margin-top:8px}
-  .card .time{font-size:11px;color:#5a4a35;margin-top:4px}
-  .card button{margin-top:8px;width:100%;padding:8px;border:none;border-radius:6px;
-    background:#2e7d4f;color:#fff;font-size:13px;font-weight:600;cursor:pointer}
-  .card button:active{transform:scale(.97)}
-  .new-blink{animation:blink 0.9s ease-in-out infinite}
-  @keyframes blink{
-    0%,100%{box-shadow:0 0 0 0 rgba(255,210,80,.9), 0 4px 12px rgba(0,0,0,.4);}
-    50%{box-shadow:0 0 0 10px rgba(255,210,80,0), 0 4px 12px rgba(0,0,0,.4);}
-  }
-  .empty{color:#777;font-size:14px;margin-top:40px}
-  .topbar{display:flex;align-items:center;gap:12px;margin-bottom:6px}
-  .count-badge{background:#b53030;color:#fff;border-radius:20px;padding:4px 12px;font-size:13px;font-weight:700}
-  .sound-toggle{font-size:12px;color:#bbb;cursor:pointer;user-select:none;border:1px solid #555;
-    border-radius:6px;padding:4px 10px}
-  .sound-toggle.off{opacity:.5}
-  .alarm-banner{
-    position:fixed; top:0; left:0; right:0; z-index:100;
-    background:#c0392b; color:#fff; padding:14px 16px;
-    display:none; align-items:center; justify-content:space-between;
-    box-shadow:0 4px 14px rgba(0,0,0,.5);
-    animation:alarmPulse 1s ease-in-out infinite;
-  }
-  .alarm-banner.show{display:flex}
-  .alarm-banner .txt{font-size:15px;font-weight:700}
-  .alarm-banner button{
-    background:#fff; color:#c0392b; border:none; border-radius:8px;
-    padding:10px 18px; font-size:14px; font-weight:700; cursor:pointer;
-  }
-  @keyframes alarmPulse{
-    0%,100%{background:#c0392b}
-    50%{background:#e74c3c}
-  }
-  @media (max-width:480px){
-    body{padding:78px 10px 50px}
-    h1{font-size:18px}
-    .topbar{flex-wrap:wrap;gap:8px}
-    .station{min-width:100%}
-  }
-  .unlock-bg{
-    position:fixed; inset:0; background:#101010; z-index:200;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
-  }
-  .unlock-bg button{
-    background:#b53030; color:#fff; border:none; border-radius:10px;
-    padding:16px 28px; font-size:16px; font-weight:700; cursor:pointer;
-  }
-  .voice-panel{
-    background:#1a1a1a; border:1px solid #444; border-radius:10px;
-    padding:10px 14px; margin-bottom:14px; display:none;
-    width:100%; max-width:1300px; font-size:13px;
-  }
-  .voice-panel.show{display:block}
-  .voice-panel label{display:block;margin:8px 0 3px;color:#bbb}
-  .voice-panel select, .voice-panel input[type=range]{width:100%}
-  .voice-row{display:flex; gap:16px; flex-wrap:wrap}
-  .voice-row > div{flex:1; min-width:160px}
-  .voice-panel button{
-    margin-top:10px; background:#2e7d4f; color:#fff; border:none; border-radius:6px;
-    padding:7px 14px; font-size:13px; cursor:pointer;
-  }
-  .station h2{margin:0 0 10px;font-size:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px}
-  .encargado-badge{font-size:11px;background:rgba(255,255,255,.12);border-radius:12px;
-    padding:2px 8px;color:#eee;font-weight:400;cursor:pointer}
-  .encargado-badge:hover{background:rgba(255,255,255,.22)}
-  .turno-bg{position:fixed;inset:0;background:#0d0d0d;z-index:300;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px}
-  .turno-bg h2{color:#fff;font-size:20px;margin:0}
-  .turno-bg p{color:#aaa;font-size:13px;margin:0;text-align:center}
-  .turno-stations{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;width:100%;max-width:700px}
-  .turno-card{flex:1;min-width:180px;background:#1a1a1a;border-radius:12px;padding:16px;
-    border:2px solid #333;display:flex;flex-direction:column;gap:10px}
-  .turno-card.chaufero{border-color:#c8a84b}
-  .turno-card.frituras{border-color:#c87d3a}
-  .turno-card.saltado{border-color:#b53030}
-  .turno-card h3{margin:0;font-size:14px;color:#eee}
-  .turno-card select{width:100%;padding:8px;border-radius:8px;border:1px solid #444;
-    background:#252525;color:#fff;font-size:14px}
-  .turno-btn{background:#b53030;color:#fff;border:none;border-radius:10px;
-    padding:14px 32px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px}
-  .turno-btn:hover{background:#d04040}
-  .link-admin{color:#caa86a;font-size:12px;text-decoration:none;margin-top:4px}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:#101010;font-family:'Segoe UI',Arial,sans-serif;
+  display:flex;flex-direction:column;align-items:center;padding:24px 16px 60px;color:#eee}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:#999;font-size:13px;margin-bottom:20px}
+.topbar{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.count-badge{background:#b53030;color:#fff;border-radius:20px;padding:4px 12px;font-size:13px;font-weight:700}
+.sound-toggle{font-size:12px;color:#bbb;cursor:pointer;user-select:none;border:1px solid #555;border-radius:6px;padding:4px 10px}
+.sound-toggle.off{opacity:.5}
+.stations{display:flex;gap:16px;width:100%;max-width:1300px;align-items:flex-start;flex-wrap:wrap}
+.station{flex:1;min-width:280px;background:#1a1a1a;border-radius:12px;padding:14px;border:2px solid #333}
+.station h2{margin:0 0 10px;font-size:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px}
+.station.chaufero{border-color:#c8a84b}
+.station.frituras{border-color:#c87d3a}
+.station.saltado{border-color:#b53030}
+.scount{background:#444;border-radius:14px;padding:2px 10px;font-size:13px}
+.encargado-badge{font-size:11px;background:rgba(255,255,255,.12);border-radius:12px;padding:2px 8px;color:#eee;cursor:pointer}
+.encargado-badge:hover{background:rgba(255,255,255,.22)}
+.queue{display:flex;flex-direction:column;gap:10px}
+.card{position:relative;border-radius:10px;border:4px solid #d8dadc;padding:10px;box-shadow:0 4px 12px rgba(0,0,0,.4);color:#2c2014;margin-bottom:4px}
+.card .pos{position:absolute;top:-12px;left:-12px;width:28px;height:28px;border-radius:50%;background:#222;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border:2px solid #fff}
+.card .name{font-size:16px;font-weight:700;text-align:center;margin-top:8px}
+.card .time{font-size:11px;color:#5a4a35;margin-top:4px;text-align:center}
+.card button{margin-top:8px;width:100%;padding:8px;border:none;border-radius:6px;background:#2e7d4f;color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+.new-blink{animation:blink .9s ease-in-out infinite}
+@keyframes blink{0%,100%{box-shadow:0 0 0 0 rgba(255,210,80,.9)}50%{box-shadow:0 0 0 10px rgba(255,210,80,0)}}
+.empty{color:#777;font-size:14px;margin-top:10px}
+.voice-panel{background:#1a1a1a;border:1px solid #444;border-radius:10px;padding:10px 14px;margin-bottom:14px;display:none;width:100%;max-width:1300px;font-size:13px}
+.voice-panel.show{display:block}
+.voice-panel label{display:block;margin:8px 0 3px;color:#bbb}
+.voice-panel select,.voice-panel input[type=range]{width:100%}
+.voice-row{display:flex;gap:16px;flex-wrap:wrap}
+.voice-row>div{flex:1;min-width:160px}
+.voice-panel button{margin-top:10px;background:#2e7d4f;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:13px;cursor:pointer}
+.turno-bg{position:fixed;inset:0;background:#0d0d0d;z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px}
+.turno-bg h2{color:#fff;font-size:20px;margin:0}
+.turno-bg p{color:#aaa;font-size:13px;margin:0;text-align:center}
+.turno-stations{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;width:100%;max-width:700px}
+.turno-card{flex:1;min-width:180px;background:#1a1a1a;border-radius:12px;padding:16px;border:2px solid #333;display:flex;flex-direction:column;gap:10px}
+.turno-card.chaufero{border-color:#c8a84b}
+.turno-card.frituras{border-color:#c87d3a}
+.turno-card.saltado{border-color:#b53030}
+.turno-card h3{margin:0;font-size:14px;color:#eee}
+.turno-card select{width:100%;padding:8px;border-radius:8px;border:1px solid #444;background:#252525;color:#fff;font-size:14px}
+.turno-btn{background:#b53030;color:#fff;border:none;border-radius:10px;padding:14px 32px;font-size:15px;font-weight:700;cursor:pointer}
+.unlock-bg{position:fixed;inset:0;background:#101010;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.unlock-bg button{background:#b53030;color:#fff;border:none;border-radius:10px;padding:16px 28px;font-size:16px;font-weight:700;cursor:pointer}
+.popup-btn{font-size:12px;color:#bbb;cursor:pointer;border:1px solid #555;border-radius:6px;padding:4px 10px;background:none}
+.conn-err{position:fixed;top:0;left:0;right:0;background:#7a1d1d;color:#fff;padding:8px 14px;font-size:12px;z-index:500;text-align:center;display:none}
+.conn-err.show{display:block}
+@media(max-width:480px){body{padding:78px 10px 50px}.station{min-width:100%}}
 </style>
 </head>
 <body>
-  <!-- Overlay de asignación de turno -->
-  <div class="turno-bg" id="turnoBg">
-    <div style="font-size:36px">👨‍🍳</div>
-    <h2>Iniciar turno — Cocina</h2>
-    <p>Asigna un encargado a cada estación antes de comenzar</p>
-    <div class="turno-stations" id="turnoStations"></div>
-    <button class="turno-btn" id="turnoIniciarBtn">Iniciar turno</button>
-    <a href="admin.html" class="link-admin">📊 Ver panel de administración</a>
+<div class="conn-err" id="connErr">⚠️ Sin conexión al servidor. Verifica el internet.</div>
+<div class="unlock-bg" id="unlockBg">
+  <div style="font-size:40px">🔔</div>
+  <div style="color:#eee;font-size:15px;text-align:center;max-width:280px">Toca para activar el sonido y la voz</div>
+  <button id="unlockBtn">Activar sonido</button>
+</div>
+<div class="turno-bg" id="turnoBg">
+  <div style="font-size:36px">👨‍🍳</div>
+  <h2>Iniciar turno — Cocina</h2>
+  <p>Asigna un encargado a cada estación antes de comenzar</p>
+  <div class="turno-stations" id="turnoStations"></div>
+  <button class="turno-btn" id="turnoIniciarBtn">Iniciar turno</button>
+  <a href="admin.html" style="color:#caa86a;font-size:12px;text-decoration:none;margin-top:4px">📊 Ver administración</a>
+</div>
+<div class="topbar">
+  <h1>👨‍🍳 Cocina</h1>
+  <span class="count-badge" id="countBadge">0</span>
+  <span class="sound-toggle" id="soundToggle">🔊 Sonido: ON</span>
+  <span class="sound-toggle" id="recuentoBtn" style="border-color:#caa86a;color:#ffe1a3">🔁 Recuento</span>
+  <button class="popup-btn" id="notifBtn">🪟 Popup: ON</button>
+  <span class="sound-toggle" id="voiceBtn">🎙️ Voz</span>
+  <span class="sound-toggle" id="fullscreenBtn">⛶ Pantalla completa</span>
+  <span class="sound-toggle" id="clearAllBtn" style="border-color:#b5342f;color:#ff9b8a">🗑 Vaciar cola</span>
+</div>
+<div class="voice-panel" id="voicePanel">
+  <label>Elegir voz</label>
+  <select id="voiceSelect"></select>
+  <div class="voice-row">
+    <div><label>Velocidad: <span id="rateVal">1.0</span></label><input type="range" id="rateRange" min="0.6" max="1.4" step="0.05" value="1"></div>
+    <div><label>Tono: <span id="pitchVal">1.2</span></label><input type="range" id="pitchRange" min="0.5" max="2" step="0.05" value="1.2"></div>
   </div>
-  <div class="unlock-bg" id="unlockBg">
-    <div style="font-size:40px">🔔</div>
-    <div style="color:#eee;font-size:15px;text-align:center;max-width:280px">
-      Toca el botón para activar el sonido y la voz de las alertas en este dispositivo
-    </div>
-    <button id="unlockBtn">Activar sonido</button>
+  <button id="testVoiceBtn">▶ Probar voz</button>
+</div>
+<p class="sub">Presiona "Listo" al terminar cada pedido.</p>
+<div class="stations">
+  <div class="station chaufero">
+    <h2>🍚 Chaufero <span class="scount" id="cnt-chaufero">0</span>
+      <span class="encargado-badge" id="badge-chaufero" onclick="cambiarEncargado('chaufero')">— sin asignar</span></h2>
+    <div class="queue" id="queue-chaufero"></div>
+    <div class="empty" id="empty-chaufero" style="display:none">Sin pedidos 🎉</div>
   </div>
-  <div class="topbar">
-    <h1>👨‍🍳 Cocina</h1>
-    <span class="count-badge" id="countBadge">0</span>
-    <span class="sound-toggle" id="soundToggle">🔊 Sonido: ON</span>
-    <span class="sound-toggle" id="recuentoBtn" style="border-color:#caa86a;color:#ffe1a3">🔁 Recuento</span>
-    <span class="sound-toggle" id="notifBtn" style="border-color:#3a8c5a;color:#a8f0c0">🪟 Popup: ON</span>
-    <span class="sound-toggle" id="voiceBtn">🎙️ Voz</span>
-    <span class="sound-toggle" id="fullscreenBtn">⛶ Pantalla completa</span>
-    <span class="sound-toggle" id="clearAllBtn" style="border-color:#b5342f;color:#ff9b8a">🗑 Vaciar cola</span>
+  <div class="station frituras">
+    <h2>🍤 Frituras <span class="scount" id="cnt-frituras">0</span>
+      <span class="encargado-badge" id="badge-frituras" onclick="cambiarEncargado('frituras')">— sin asignar</span></h2>
+    <div class="queue" id="queue-frituras"></div>
+    <div class="empty" id="empty-frituras" style="display:none">Sin pedidos 🎉</div>
   </div>
-
-  <div class="voice-panel" id="voicePanel">
-    <label>Elegir voz (las disponibles dependen de tu dispositivo/navegador)</label>
-    <select id="voiceSelect"></select>
-    <div class="voice-row">
-      <div>
-        <label>Velocidad: <span id="rateVal">1.0</span></label>
-        <input type="range" id="rateRange" min="0.6" max="1.4" step="0.05" value="1">
-      </div>
-      <div>
-        <label>Tono (más agudo = más juguetón): <span id="pitchVal">1.2</span></label>
-        <input type="range" id="pitchRange" min="0.5" max="2" step="0.05" value="1.2">
-      </div>
-    </div>
-    <button id="testVoiceBtn">▶ Probar voz</button>
+  <div class="station saltado">
+    <h2>🥘 Saltado <span class="scount" id="cnt-saltado">0</span>
+      <span class="encargado-badge" id="badge-saltado" onclick="cambiarEncargado('saltado')">— sin asignar</span></h2>
+    <div class="queue" id="queue-saltado"></div>
+    <div class="empty" id="empty-saltado" style="display:none">Sin pedidos 🎉</div>
   </div>
-  <p class="sub">Los pedidos aparecen en orden de llegada en su estación. Presiona "Listo" al terminar uno.</p>
-
-  <div class="stations">
-    <div class="station chaufero">
-      <h2>🍚 Chaufero <span class="scount" id="cnt-chaufero">0</span>
-        <span class="encargado-badge" id="badge-chaufero" onclick="cambiarEncargado('chaufero')">— sin asignar</span>
-      </h2>
-      <div class="queue" id="queue-chaufero"></div>
-      <div class="empty" id="empty-chaufero" style="display:none">Sin pedidos 🎉</div>
-    </div>
-    <div class="station frituras">
-      <h2>🍤 Frituras <span class="scount" id="cnt-frituras">0</span>
-        <span class="encargado-badge" id="badge-frituras" onclick="cambiarEncargado('frituras')">— sin asignar</span>
-      </h2>
-      <div class="queue" id="queue-frituras"></div>
-      <div class="empty" id="empty-frituras" style="display:none">Sin pedidos 🎉</div>
-    </div>
-    <div class="station saltado">
-      <h2>🥘 Saltado <span class="scount" id="cnt-saltado">0</span>
-        <span class="encargado-badge" id="badge-saltado" onclick="cambiarEncargado('saltado')">— sin asignar</span>
-      </h2>
-      <div class="queue" id="queue-saltado"></div>
-      <div class="empty" id="empty-saltado" style="display:none">Sin pedidos 🎉</div>
-    </div>
-  </div>
+</div>
 
 <script>
-const $ = id => document.getElementById(id);
+const SB_URL='https://vjmnbzjtvuwqowxvknlu.supabase.co';
+const SB_KEY='sb_publishable_yhqceljyEg06FUWyJlpfUA_vtOBkyne';
+const STATION_LABELS={chaufero:'🍚 Chaufero',frituras:'🍤 Frituras',saltado:'🥘 Saltado'};
+const STATION_LIST=['chaufero','frituras','saltado'];
+let STAFF=['Jhon','Marco','Luis','Ana','Carlos','Rosa','Pedro','María'];
+const $=id=>document.getElementById(id);
 
-// Registrar Service Worker para notificaciones en background
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js').catch(()=>{});
-}
+let ordersArr=[], seenIds=new Set(), firstLoad=true;
+let soundOn=true, encargadosObj={}, wakeLock=null;
+let voiceRate=parseFloat(localStorage.getItem('voiceRate_v1'))||1.0;
+let voicePitch=parseFloat(localStorage.getItem('voicePitch_v1'))||1.2;
+let allVoices=[],spanishVoice=null;
+let speechChain=Promise.resolve();
+let popupQueue=[],popupWin=null;
 
-// El botón de "Activar sonido" se bindea ANTES de tocar Firebase, para que
-// nunca se quede trabado aunque la red bloquee Firebase (algunos wifis de
-// tiendas bloquean dominios como gstatic.com/firebaseio.com).
-$('unlockBtn').onclick = () => {
-  // Ocultar el overlay PRIMERO, sin importar si el audio falla
-  $('unlockBg').style.display = 'none';
-  // Intentar activar audio/voz (puede fallar silenciosamente en algunos Samsung)
+async function api(path,opts={}){
   try{
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if(AudioCtx){ const ctx = new AudioCtx(); ctx.resume().catch(()=>{}); }
-  }catch(e){}
-  try{
-    if(window.speechSynthesis){
-      const u = new SpeechSynthesisUtterance('Listo');
-      u.lang = 'es'; u.volume = 0.01;
-      speechSynthesis.speak(u);
-    }
-  }catch(e){}
-  // Pedir permiso de notificaciones del navegador (para ventanitas tipo Messenger en PC)
-  try{
-    if('Notification' in window && Notification.permission === 'default'){
-      Notification.requestPermission();
-    }
-  }catch(e){}
-  // Wake lock para mantener pantalla encendida
-  try{
-    if('wakeLock' in navigator){
-      navigator.wakeLock.request('screen').then(wl => { wakeLock = wl; }).catch(()=>{});
-    }
-  }catch(e){}
-};
-
-const firebaseConfig = {
-  apiKey: "AIzaSyARmR4JyJXwaleuEHws1cfVfhgZyGClKi8",
-  authDomain: "chifa-pedidos.firebaseapp.com",
-  databaseURL: "https://chifa-pedidos-default-rtdb.firebaseio.com",
-  projectId: "chifa-pedidos",
-  storageBucket: "chifa-pedidos.firebasestorage.app",
-  messagingSenderId: "692981905741",
-  appId: "1:692981905741:web:5e2c28ac898f5429141f04"
-};
-
-let firebaseOk = false;
-let db, ordersRef, statsRef, timeStatsRef;
-try{
-  if(typeof firebase === 'undefined'){
-    throw new Error('El SDK de Firebase no cargó (script bloqueado por la red/wifi).');
-  }
-  firebase.initializeApp(firebaseConfig);
-  db = firebase.database();
-  ordersRef = db.ref('orders');
-  statsRef = db.ref('stats');
-  timeStatsRef = db.ref('time_stats');
-  turnoRef = db.ref('turno_actual');
-  firebaseOk = true;
-}catch(e){
-  mostrarErrorConexion(e.message);
-}
-
-function mostrarErrorConexion(msg){
-  const banner = document.createElement('div');
-  banner.style.position = 'fixed';
-  banner.style.top = '0'; banner.style.left = '0'; banner.style.right = '0';
-  banner.style.background = '#7a1d1d'; banner.style.color = '#fff';
-  banner.style.padding = '14px 16px'; banner.style.fontSize = '13px';
-  banner.style.zIndex = '500'; banner.style.textAlign = 'center';
-  banner.textContent = '⚠️ No se pudo conectar al servidor de pedidos. Revisa el wifi de este dispositivo ' +
-    '(si es la red de la tienda, puede estar bloqueando el servicio) o usa datos móviles. Detalle: ' + msg;
-  document.body.appendChild(banner);
-}
-
-// Lista de encargados — editar aquí para agregar/quitar personal
-const STAFF = ['Jhon', 'Marco', 'Luis', 'Ana', 'Carlos', 'Rosa', 'Pedro', 'María'];
-const STATION_LABELS = {chaufero:'🍚 Chaufero', frituras:'🍤 Frituras', saltado:'🥘 Saltado'};
-
-let turnoRef, encargadosObj = {};
-
-let ordersObj = {};
-let prevOrdersObj = {};
-let seenIds = new Set();
-let soundOn = true;
-let firstSnapshot = true;
-let wakeLock = null;
-
-let allSpanishVoices = [];
-let spanishVoice = null;
-let voiceRate = parseFloat(localStorage.getItem('voiceRate_v1')) || 1.0;
-let voicePitch = parseFloat(localStorage.getItem('voicePitch_v1')) || 1.2;
-const savedVoiceName = localStorage.getItem('voiceName_v1') || null;
-
-function pickSpanishVoice(){
-  try{
-    const voices = speechSynthesis.getVoices();
-    allSpanishVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('es'));
-    if(allSpanishVoices.length === 0) allSpanishVoices = voices; // fallback si no hay voces es-*
-
-    if(savedVoiceName){
-      spanishVoice = allSpanishVoices.find(v => v.name === savedVoiceName) || null;
-    }
-    if(!spanishVoice){
-      spanishVoice = allSpanishVoices.find(v => v.lang === 'es-PE')
-        || allSpanishVoices.find(v => /female|mujer/i.test(v.name))
-        || allSpanishVoices[0] || null;
-    }
-    poblarSelectorVoces();
-  }catch(e){}
-}
-pickSpanishVoice();
-if('speechSynthesis' in window){
-  speechSynthesis.onvoiceschanged = pickSpanishVoice;
-}
-
-function poblarSelectorVoces(){
-  const sel = $('voiceSelect');
-  sel.innerHTML = '';
-  allSpanishVoices.forEach(v => {
-    const opt = document.createElement('option');
-    opt.value = v.name;
-    opt.textContent = v.name + ' (' + v.lang + ')';
-    if(spanishVoice && v.name === spanishVoice.name) opt.selected = true;
-    sel.appendChild(opt);
-  });
-  $('rateRange').value = voiceRate;
-  $('rateVal').textContent = voiceRate.toFixed(2);
-  $('pitchRange').value = voicePitch;
-  $('pitchVal').textContent = voicePitch.toFixed(2);
-}
-
-$('voiceBtn').onclick = () => $('voicePanel').classList.toggle('show');
-
-// ---- Overlay de inicio de turno ----
-function buildTurnoOverlay(){
-  const wrap = $('turnoStations');
-  wrap.innerHTML = '';
-  ['chaufero','frituras','saltado'].forEach(st => {
-    const card = document.createElement('div');
-    card.className = 'turno-card ' + st;
-    const h3 = document.createElement('h3');
-    h3.textContent = STATION_LABELS[st];
-    const sel = document.createElement('select');
-    sel.id = 'turno-sel-' + st;
-    const optNone = document.createElement('option');
-    optNone.value = '';
-    optNone.textContent = '— Sin asignar —';
-    sel.appendChild(optNone);
-    STAFF.forEach(name => {
-      const o = document.createElement('option');
-      o.value = name; o.textContent = name;
-      if(encargadosObj[st] === name) o.selected = true;
-      sel.appendChild(o);
+    const res=await fetch(SB_URL+'/rest/v1/'+path,{
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':opts.prefer||'return=representation',...(opts.headers||{})},
+      ...opts
     });
-    card.appendChild(h3);
-    card.appendChild(sel);
-    wrap.appendChild(card);
-  });
+    const txt=await res.text();
+    if(!res.ok)throw new Error(txt);
+    return txt?JSON.parse(txt):null;
+  }catch(e){$('connErr').classList.add('show');throw e;}
 }
 
-function actualizarBadges(){
-  ['chaufero','frituras','saltado'].forEach(st => {
-    const badge = $('badge-' + st);
-    if(badge) badge.textContent = encargadosObj[st] ? ('👤 ' + encargadosObj[st]) : '— sin asignar';
-  });
-}
-
-window.cambiarEncargado = function(st){
-  const nombre = prompt('Cambiar encargado de ' + STATION_LABELS[st] + ':\n\nPersonal disponible:\n' +
-    STAFF.map((n,i) => (i+1)+'. '+n).join('\n') + '\n\nEscribe el nombre exacto o déjalo vacío para quitar:');
-  if(nombre === null) return;
-  const validado = STAFF.find(n => n.toLowerCase() === nombre.trim().toLowerCase()) || '';
-  encargadosObj[st] = validado;
-  actualizarBadges();
-  if(firebaseOk) turnoRef.child('encargados').set(encargadosObj);
-};
-
-$('turnoIniciarBtn').onclick = () => {
-  ['chaufero','frituras','saltado'].forEach(st => {
-    const sel = document.getElementById('turno-sel-' + st);
-    if(sel) encargadosObj[st] = sel.value || '';
-  });
-  actualizarBadges();
-  if(firebaseOk){
-    const turnoData = {
-      encargados: encargadosObj,
-      inicio: Date.now(),
-      fecha: new Date().toLocaleDateString('es-PE')
+function wsListen(table,cb){
+  const url=SB_URL.replace('https','wss')+'/realtime/v1/websocket?apikey='+SB_KEY+'&vsn=1.0.0';
+  let ws;
+  function connect(){
+    ws=new WebSocket(url);
+    ws.onopen=()=>{
+      ws.send(JSON.stringify({topic:'realtime:public:'+table,event:'phx_join',payload:{},ref:'1'}));
+      setInterval(()=>ws.send(JSON.stringify({topic:'phoenix',event:'heartbeat',payload:{},ref:'hb'})),25000);
     };
-    turnoRef.set(turnoData);
+    ws.onmessage=e=>{const m=JSON.parse(e.data);if(['INSERT','UPDATE','DELETE'].includes(m.event))cb(m);};
+    ws.onclose=()=>setTimeout(connect,3000);
   }
-  $('turnoBg').style.display = 'none';
-};
-
-// Cargar encargados actuales y lista de personal desde Firebase al abrir
-if(firebaseOk){
-  db.ref('staff_list').once('value', snap => {
-    const lista = snap.val();
-    if(lista && lista.length > 0) STAFF.splice(0, STAFF.length, ...lista);
-  });
-  turnoRef.once('value', snap => {
-    const data = snap.val();
-    if(data && data.encargados) encargadosObj = data.encargados;
-    buildTurnoOverlay();
-    actualizarBadges();
-  }).catch(() => buildTurnoOverlay());
-} else {
-  buildTurnoOverlay();
+  connect();
 }
 
-
-
-$('voiceSelect').onchange = (e) => {
-  spanishVoice = allSpanishVoices.find(v => v.name === e.target.value) || null;
-  if(spanishVoice) localStorage.setItem('voiceName_v1', spanishVoice.name);
-};
-$('rateRange').oninput = (e) => {
-  voiceRate = parseFloat(e.target.value);
-  $('rateVal').textContent = voiceRate.toFixed(2);
-  localStorage.setItem('voiceRate_v1', voiceRate);
-};
-$('pitchRange').oninput = (e) => {
-  voicePitch = parseFloat(e.target.value);
-  $('pitchVal').textContent = voicePitch.toFixed(2);
-  localStorage.setItem('voicePitch_v1', voicePitch);
-};
-
-function speakOne(text, onDone, pitchOverride, rateOverride){
-  try{
-    const u = new SpeechSynthesisUtterance(text);
-    if(spanishVoice) u.voice = spanishVoice;
-    u.lang = (spanishVoice && spanishVoice.lang) || 'es-PE';
-    u.rate = rateOverride != null ? rateOverride : voiceRate;
-    u.pitch = pitchOverride != null ? pitchOverride : voicePitch;
-    u.volume = 1;
-    u.onend = () => onDone && onDone();
-    u.onerror = () => onDone && onDone();
-    speechSynthesis.speak(u);
-  }catch(e){ onDone && onDone(); }
+// ---- Voz ----
+function pickVoice(){
+  const voices=speechSynthesis.getVoices();
+  allVoices=voices.filter(v=>v.lang&&v.lang.toLowerCase().startsWith('es'));
+  if(!allVoices.length)allVoices=voices;
+  const saved=localStorage.getItem('voiceName_v1');
+  spanishVoice=(saved&&allVoices.find(v=>v.name===saved))||allVoices.find(v=>v.lang==='es-PE')||allVoices[0]||null;
+  populateVoiceSelect();
 }
+pickVoice();
+if('speechSynthesis' in window) speechSynthesis.onvoiceschanged=pickVoice;
 
-$('testVoiceBtn').onclick = () => {
-  try{ speechSynthesis.cancel(); }catch(e){}
-  speakOne(fraseAleatoria('un', 'Chaufa'));
-};
+function populateVoiceSelect(){
+  const sel=$('voiceSelect');sel.innerHTML='';
+  allVoices.forEach(v=>{const o=document.createElement('option');o.value=v.name;o.textContent=v.name+' ('+v.lang+')';if(spanishVoice&&v.name===spanishVoice.name)o.selected=true;sel.appendChild(o);});
+  $('rateRange').value=voiceRate;$('rateVal').textContent=voiceRate.toFixed(2);
+  $('pitchRange').value=voicePitch;$('pitchVal').textContent=voicePitch.toFixed(2);
+}
+$('voiceBtn').onclick=()=>$('voicePanel').classList.toggle('show');
+$('voiceSelect').onchange=e=>{spanishVoice=allVoices.find(v=>v.name===e.target.value)||null;if(spanishVoice)localStorage.setItem('voiceName_v1',spanishVoice.name);};
+$('rateRange').oninput=e=>{voiceRate=parseFloat(e.target.value);$('rateVal').textContent=voiceRate.toFixed(2);localStorage.setItem('voiceRate_v1',voiceRate);};
+$('pitchRange').oninput=e=>{voicePitch=parseFloat(e.target.value);$('pitchVal').textContent=voicePitch.toFixed(2);localStorage.setItem('voicePitch_v1',voicePitch);};
 
-// --- Anuncio: cada pedido nuevo se canta UNA sola vez (no en bucle).
-// Las frases son variadas para que no suene repetitivo. El botón "Recuento"
-// permite volver a escuchar todos los pendientes actuales cuando se quiera.
-const FRASES = [
-  (art, label) => art.charAt(0).toUpperCase() + art.slice(1) + ' ' + label + ', por favor.',
-  (art, label) => 'Pedido nuevo: ' + art + ' ' + label + '.',
-  (art, label) => 'Cocina, atento a ' + art + ' ' + label + '.',
-  (art, label) => '¡Vamos! ' + art + ' ' + label + ', cuando puedan.'
+const FRASES=[
+  (art,l)=>art.charAt(0).toUpperCase()+art.slice(1)+' '+l+', por favor.',
+  (art,l)=>'Pedido nuevo: '+art+' '+l+'.',
+  (art,l)=>'Cocina, atento a '+art+' '+l+'.',
+  (art,l)=>'¡Vamos! '+art+' '+l+', cuando puedan.'
 ];
+function fraseAleatoria(art,label){return FRASES[Math.floor(Math.random()*FRASES.length)](art||'un',label);}
 
-function fraseAleatoria(art, label){
-  const f = FRASES[Math.floor(Math.random() * FRASES.length)];
-  return f(art || 'un', label);
+function speakOne(text,onDone,pOverride,rOverride){
+  try{
+    const u=new SpeechSynthesisUtterance(text);
+    if(spanishVoice)u.voice=spanishVoice;
+    u.lang=(spanishVoice&&spanishVoice.lang)||'es-PE';
+    u.rate=rOverride!=null?rOverride:voiceRate;
+    u.pitch=pOverride!=null?pOverride:voicePitch;
+    u.volume=1;
+    u.onend=()=>onDone&&onDone();u.onerror=()=>onDone&&onDone();
+    speechSynthesis.speak(u);
+  }catch(e){onDone&&onDone();}
 }
+$('testVoiceBtn').onclick=()=>{try{speechSynthesis.cancel();}catch(e){}speakOne(fraseAleatoria('un','Chaufa'));};
 
-let speechChain = Promise.resolve();
-
-function encolarAnuncio(art, label){
-  speechChain = speechChain.then(() => new Promise((resolve) => {
-    if(!soundOn){ resolve(); return; }
-    // Pequeña variación aleatoria de tono/velocidad en cada anuncio: ayuda a que
-    // no suene siempre idéntico, sobre todo en celulares con pocas voces instaladas.
-    const jitterPitch = Math.max(0.5, Math.min(2, voicePitch + (Math.random()*0.3 - 0.15)));
-    const jitterRate = Math.max(0.6, Math.min(1.4, voiceRate + (Math.random()*0.16 - 0.08)));
-    speakOne(fraseAleatoria(art, label), resolve, jitterPitch, jitterRate);
+function encolarAnuncio(art,label){
+  speechChain=speechChain.then(()=>new Promise(resolve=>{
+    if(!soundOn){resolve();return;}
+    const jp=Math.max(.5,Math.min(2,voicePitch+(Math.random()*.3-.15)));
+    const jr=Math.max(.6,Math.min(1.4,voiceRate+(Math.random()*.16-.08)));
+    speakOne(fraseAleatoria(art,label),resolve,jp,jr);
   }));
 }
 
-function pendientesActuales(){
-  return getOrdersArray().filter(o => o.status === 'pending').sort((a,b)=>a.createdAt-b.createdAt);
+// ---- Popup flotante ----
+function notificar(label,station){popupQueue.push({label,station});mostrarPopup();}
+function mostrarPopup(){
+  if(popupWin&&!popupWin.closed){try{actualizarPopup();}catch(e){}return;}
+  const w=320,h=420,left=window.screen.availWidth-w-20,top=window.screen.availHeight-h-60;
+  popupWin=window.open('','pedidos_popup',`width=${w},height=${h},left=${left},top=${top},resizable=no,scrollbars=no,status=no,toolbar=no,menubar=no,location=no`);
+  if(!popupWin)return;
+  actualizarPopup();
 }
-
-$('recuentoBtn').onclick = () => {
-  const pendings = pendientesActuales();
-  if(pendings.length === 0){
-    showQuickToast('No hay pedidos pendientes 🎉');
-    return;
-  }
-  pendings.forEach(o => encolarAnuncio(o.art, o.label));
-};
-
-function showQuickToast(text){
-  let t = document.getElementById('quickToast');
-  if(!t){
-    t = document.createElement('div');
-    t.id = 'quickToast';
-    t.style.position = 'fixed';
-    t.style.bottom = '20px';
-    t.style.left = '50%';
-    t.style.transform = 'translateX(-50%)';
-    t.style.background = '#2e7d4f';
-    t.style.color = '#fff';
-    t.style.padding = '10px 18px';
-    t.style.borderRadius = '8px';
-    t.style.fontSize = '13px';
-    t.style.zIndex = '300';
-    document.body.appendChild(t);
-  }
-  t.textContent = text;
-  t.style.display = 'block';
-  clearTimeout(t._hideTimer);
-  t._hideTimer = setTimeout(()=>{ t.style.display = 'none'; }, 2500);
-}
-
-$('notifBtn').onclick = () => notificar('Prueba de pedido', 'frituras');
-
-$('fullscreenBtn').onclick = () => {
-  if(!document.fullscreenElement){
-    document.documentElement.requestFullscreen().catch(()=>{
-      alert('Tu navegador no permite pantalla completa aquí. En iPhone, usa "Agregar a pantalla de inicio" desde el menú de compartir de Safari.');
-    });
-  } else {
-    document.exitFullscreen();
-  }
-};
-
-$('clearAllBtn').onclick = () => {
-  if(!firebaseOk){ alert('No hay conexión al servidor de pedidos.'); return; }
-  if(confirm('¿Vaciar TODA la cola de pedidos (caja y cocina)? Esto no se puede deshacer.')){
-    ordersRef.remove();
-    try{ speechSynthesis.cancel(); }catch(e){}
-    speechChain = Promise.resolve();
-  }
-};
-
-$('soundToggle').onclick = () => {
-  soundOn = !soundOn;
-  $('soundToggle').textContent = soundOn ? '🔊 Sonido: ON' : '🔇 Sonido: OFF';
-  $('soundToggle').classList.toggle('off', !soundOn);
-  if(!soundOn){
-    try{ speechSynthesis.cancel(); }catch(e){}
-  }
-};
-
-// Cola de pedidos pendientes de mostrar en la ventana flotante
-let popupQueue = [];
-let popupWin = null;
-
-function notificar(label, station){
-  popupQueue.push({label, station});
-  mostrarPopupFlotante();
-}
-
-function mostrarPopupFlotante(){
-  // Si ya hay una ventana abierta y viva, solo actualizamos su contenido
-  if(popupWin && !popupWin.closed){
-    try{ actualizarContenidoPopup(); }catch(e){}
-    return;
-  }
-  // Calcular posición: esquina inferior derecha de la pantalla
-  const w = 320, h = 420;
-  const left = window.screen.availWidth - w - 20;
-  const top = window.screen.availHeight - h - 60;
-  popupWin = window.open('', 'pedidos_popup',
-    `width=${w},height=${h},left=${left},top=${top},resizable=no,scrollbars=no,` +
-    `status=no,toolbar=no,menubar=no,location=no`
-  );
-  if(!popupWin){ return; } // bloqueador de popups activo
-  actualizarContenidoPopup();
-}
-
-function actualizarContenidoPopup(){
-  if(!popupWin || popupWin.closed) return;
-  const stationColors = {chaufero:'#c8a84b', frituras:'#c87d3a', saltado:'#b53030'};
-  const stationNames  = {chaufero:'🍚 Chaufero', frituras:'🍤 Frituras', saltado:'🥘 Saltado'};
-
-  const items = popupQueue.map((p,i) => `
-    <div style="background:#1e1e1e;border-radius:10px;padding:12px 14px;
-      border-left:4px solid ${stationColors[p.station]||'#888'};
-      display:flex;justify-content:space-between;align-items:center;gap:8px">
-      <div>
-        <div style="font-size:11px;color:#aaa;margin-bottom:2px">${stationNames[p.station]||'Cocina'}</div>
-        <div style="font-size:16px;font-weight:700;color:#fff">${p.label}</div>
-      </div>
-      <button onclick="parent.cerrarItem(${i})" style="background:#2e7d4f;color:#fff;border:none;
-        border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;white-space:nowrap">✓ Visto</button>
-    </div>
-  `).join('');
-
-  const html = `<!DOCTYPE html><html><head>
-    <meta charset="UTF-8">
-    <title>🔔 Pedidos nuevos</title>
-    <style>
-      *{box-sizing:border-box;margin:0;padding:0}
-      body{background:#101010;font-family:'Segoe UI',Arial,sans-serif;
-        display:flex;flex-direction:column;height:100vh;overflow:hidden}
-      .header{background:#b53030;padding:10px 14px;display:flex;
-        align-items:center;justify-content:space-between;flex-shrink:0}
-      .header span{color:#fff;font-weight:700;font-size:14px}
-      .badge{background:#fff;color:#b53030;border-radius:50%;
-        width:22px;height:22px;display:inline-flex;align-items:center;
-        justify-content:center;font-size:12px;font-weight:800}
-      .list{padding:10px;display:flex;flex-direction:column;
-        gap:8px;overflow-y:auto;flex:1}
-      .cerrar-todo{margin:8px;background:#333;color:#eee;border:none;
-        border-radius:8px;padding:8px;font-size:12px;cursor:pointer;width:calc(100% - 16px)}
-      .cerrar-todo:hover{background:#444}
-    </style>
-  </head><body>
-    <div class="header">
-      <span>🔔 Nuevos pedidos <span class="badge">${popupQueue.length}</span></span>
-    </div>
-    <div class="list">${items}</div>
-    <button class="cerrar-todo" onclick="parent.cerrarTodo()">✓ Marcar todos como vistos</button>
-  </body></html>`;
-
+function actualizarPopup(){
+  if(!popupWin||popupWin.closed)return;
+  const sc={chaufero:'#c8a84b',frituras:'#c87d3a',saltado:'#b53030'};
+  const sn={chaufero:'🍚 Chaufero',frituras:'🍤 Frituras',saltado:'🥘 Saltado'};
+  const items=popupQueue.map((p,i)=>`<div style="background:#1e1e1e;border-radius:10px;padding:12px 14px;border-left:4px solid ${sc[p.station]||'#888'};display:flex;justify-content:space-between;align-items:center;gap:8px"><div><div style="font-size:11px;color:#aaa;margin-bottom:2px">${sn[p.station]||'Cocina'}</div><div style="font-size:16px;font-weight:700;color:#fff">${p.label}</div></div><button onclick="parent.cerrarItem(${i})" style="background:#2e7d4f;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer">✓ Visto</button></div>`).join('');
   popupWin.document.open();
-  popupWin.document.write(html);
-  popupWin.document.close();
-  popupWin.focus();
+  popupWin.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>🔔 Pedidos</title><style>*{box-sizing:border-box;margin:0;padding:0}body{background:#101010;font-family:'Segoe UI',Arial,sans-serif;display:flex;flex-direction:column;height:100vh}.header{background:#b53030;padding:10px 14px;display:flex;align-items:center;justify-content:space-between}.header span{color:#fff;font-weight:700;font-size:14px}.badge{background:#fff;color:#b53030;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}.list{padding:10px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1}.cerrar-todo{margin:8px;background:#333;color:#eee;border:none;border-radius:8px;padding:8px;font-size:12px;cursor:pointer;width:calc(100% - 16px)}</style></head><body><div class="header"><span>🔔 Nuevos pedidos <span class="badge">${popupQueue.length}</span></span></div><div class="list">${items}</div><button class="cerrar-todo" onclick="parent.cerrarTodo()">✓ Marcar todos como vistos</button></body></html>`);
+  popupWin.document.close();popupWin.focus();
 }
+window.cerrarItem=i=>{popupQueue.splice(i,1);if(!popupQueue.length){if(popupWin&&!popupWin.closed)popupWin.close();popupWin=null;}else actualizarPopup();};
+window.cerrarTodo=()=>{popupQueue=[];if(popupWin&&!popupWin.closed)popupWin.close();popupWin=null;};
+$('notifBtn').onclick=()=>notificar('Prueba de pedido','frituras');
 
-window.cerrarItem = function(idx){
-  popupQueue.splice(idx, 1);
-  if(popupQueue.length === 0){
-    if(popupWin && !popupWin.closed) popupWin.close();
-    popupWin = null;
-  } else {
-    actualizarContenidoPopup();
-  }
-};
-
-window.cerrarTodo = function(){
-  popupQueue = [];
-  if(popupWin && !popupWin.closed) popupWin.close();
-  popupWin = null;
-};
-
-if(firebaseOk){
-  ordersRef.on('value', (snap) => {
-    prevOrdersObj = ordersObj;
-    ordersObj = snap.val() || {};
-    if(firstSnapshot){
-      Object.keys(ordersObj).forEach(id => seenIds.add(id));
-    } else {
-      // Anunciar y notificar (una sola vez) cada pedido que sea nuevo
-      Object.keys(ordersObj).forEach(id => {
-        const o = ordersObj[id];
-        if(o && o.status === 'pending' && !prevOrdersObj[id]){
-          encolarAnuncio(o.art, o.label);
-          notificar(o.label, o.station);
-        }
-      });
-    }
-    render();
-    firstSnapshot = false;
+// ---- Turno ----
+function buildTurnoOverlay(){
+  const wrap=$('turnoStations');wrap.innerHTML='';
+  STATION_LIST.forEach(st=>{
+    const card=document.createElement('div');card.className='turno-card '+st;
+    const h3=document.createElement('h3');h3.textContent=STATION_LABELS[st];
+    const sel=document.createElement('select');sel.id='turno-sel-'+st;
+    const none=document.createElement('option');none.value='';none.textContent='— Sin asignar —';sel.appendChild(none);
+    STAFF.forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;if(encargadosObj[st]===n)o.selected=true;sel.appendChild(o);});
+    card.appendChild(h3);card.appendChild(sel);wrap.appendChild(card);
   });
 }
-
-
-function getOrdersArray(){
-  return Object.keys(ordersObj).map(id => ({id, ...ordersObj[id]}));
+function actualizarBadges(){
+  STATION_LIST.forEach(st=>{const b=$('badge-'+st);if(b)b.textContent=encargadosObj[st]?'👤 '+encargadosObj[st]:'— sin asignar';});
 }
+window.cambiarEncargado=st=>{
+  const nombre=prompt('Encargado de '+STATION_LABELS[st]+':\n\nPersonal:\n'+STAFF.map((n,i)=>(i+1)+'. '+n).join('\n')+'\n\nEscribe el nombre o deja vacío:');
+  if(nombre===null)return;
+  const v=STAFF.find(n=>n.toLowerCase()===nombre.trim().toLowerCase())||'';
+  encargadosObj[st]=v;actualizarBadges();
+  api('turno_actual?id=eq.1',{method:'PATCH',body:JSON.stringify({encargados:encargadosObj})});
+};
+$('turnoIniciarBtn').onclick=()=>{
+  STATION_LIST.forEach(st=>{const sel=document.getElementById('turno-sel-'+st);if(sel)encargadosObj[st]=sel.value||'';});
+  actualizarBadges();
+  const d={id:1,encargados:encargadosObj,inicio:Date.now(),fecha:new Date().toLocaleDateString('es-PE')};
+  api('turno_actual',{method:'POST',body:JSON.stringify(d),headers:{'Prefer':'resolution=merge-duplicates'}});
+  $('turnoBg').style.display='none';
+};
 
-const STATIONS = ['chaufero','frituras','saltado'];
-
+// ---- Render ----
 function render(){
-  const all = getOrdersArray().filter(o => o.status === 'pending').sort((a,b)=>a.createdAt-b.createdAt);
-  let total = 0;
-
-  STATIONS.forEach(st => {
-    const orders = all.filter(o => (o.station || 'saltado') === st);
-    total += orders.length;
-    const queue = $('queue-' + st);
-    queue.innerHTML = '';
-    $('cnt-' + st).textContent = orders.length;
-    $('empty-' + st).style.display = orders.length ? 'none' : 'block';
-
-    orders.forEach((o, idx) => {
-      const isNew = !seenIds.has(o.id);
-      const card = document.createElement('div');
-      card.className = 'card' + (isNew ? ' new-blink' : '');
-      card.style.background = o.color;
-
-      const pos = document.createElement('div');
-      pos.className = 'pos';
-      pos.textContent = idx + 1;
-      card.appendChild(pos);
-
-      const name = document.createElement('div');
-      name.className = 'name';
-      name.textContent = o.label;
-      card.appendChild(name);
-
-      const time = document.createElement('div');
-      time.className = 'time';
-      const mins = Math.max(0, Math.round((Date.now()-o.createdAt)/60000));
-      time.textContent = mins === 0 ? 'recién' : ('hace ' + mins + ' min');
-      card.appendChild(time);
-
-      const btn = document.createElement('button');
-      btn.textContent = '✓ Listo';
-      btn.onclick = () => marcarListo(o);
-      card.appendChild(btn);
-
+  const pending=ordersArr.filter(o=>o.status==='pending').sort((a,b)=>a.created_at-b.created_at);
+  let total=0;
+  STATION_LIST.forEach(st=>{
+    const ords=pending.filter(o=>(o.station||'saltado')===st);
+    total+=ords.length;
+    const queue=$('queue-'+st);queue.innerHTML='';
+    $('cnt-'+st).textContent=ords.length;
+    $('empty-'+st).style.display=ords.length?'none':'block';
+    ords.forEach((o,idx)=>{
+      const isNew=!seenIds.has(o.id);
+      const card=document.createElement('div');card.className='card'+(isNew?' new-blink':'');card.style.background=o.color;
+      const pos=document.createElement('div');pos.className='pos';pos.textContent=idx+1;
+      const name=document.createElement('div');name.className='name';name.textContent=o.label;
+      const time=document.createElement('div');time.className='time';
+      const mins=Math.max(0,Math.round((Date.now()-o.created_at)/60000));
+      time.textContent=mins===0?'recién':'hace '+mins+' min';
+      const btn=document.createElement('button');btn.textContent='✓ Listo';btn.onclick=()=>marcarListo(o);
+      card.appendChild(pos);card.appendChild(name);card.appendChild(time);card.appendChild(btn);
       queue.appendChild(card);
-      if(isNew) seenIds.add(o.id);
+      if(isNew)seenIds.add(o.id);
     });
   });
-
-  $('countBadge').textContent = total;
+  $('countBadge').textContent=total;
 }
 
-function marcarListo(order){
-  if(!firebaseOk) return;
-  const encargado = encargadosObj[order.station] || 'Sin asignar';
-  ordersRef.child(order.id).update({status:'ready', encargado, doneAt: Date.now()});
-  statsRef.child(order.panId).transaction(c => (c || 0) + 1);
-
-  const elapsedSec = Math.max(0, Math.round((Date.now() - order.createdAt) / 1000));
-
-  // Tiempo por producto
-  timeStatsRef.child(order.panId).transaction(cur => {
-    cur = cur || {sumSec:0, count:0, minSec:null, maxSec:null};
-    return {
-      sumSec: (cur.sumSec || 0) + elapsedSec,
-      count: (cur.count || 0) + 1,
-      minSec: cur.minSec == null ? elapsedSec : Math.min(cur.minSec, elapsedSec),
-      maxSec: cur.maxSec == null ? elapsedSec : Math.max(cur.maxSec, elapsedSec)
-    };
-  });
-
-  // Métricas por encargado
-  const staffKey = encargado.replace(/[^a-zA-Z0-9_]/g, '_');
-  db.ref('staff_stats/' + staffKey + '/' + order.station).transaction(cur => {
-    cur = cur || {count:0, sumSec:0};
-    return {count:(cur.count||0)+1, sumSec:(cur.sumSec||0)+elapsedSec, nombre:encargado};
-  });
-
-  // Guardar en historial por fecha
-  const fecha = new Date().toISOString().slice(0,10);
-  db.ref('history/' + fecha).push({
-    label: order.label,
-    panId: order.panId,
-    station: order.station,
-    encargado,
-    elapsedSec,
-    doneAt: Date.now()
-  });
+async function marcarListo(order){
+  const encargado=encargadosObj[order.station]||'Sin asignar';
+  const elapsed=Math.max(0,Math.round((Date.now()-order.created_at)/1000));
+  await api('orders?id=eq.'+order.id,{method:'PATCH',body:JSON.stringify({status:'ready',done_at:Date.now(),encargado,marked_by:'cocina'})});
+  const i=ordersArr.findIndex(o=>o.id===order.id);if(i>-1)ordersArr.splice(i,1);
+  render();
+  // Stats
+  const statsArr=await api('stats?pan_id=eq.'+order.pan_id)||[];
+  const cur=statsArr[0]?.count||0;
+  await api('stats',{method:'POST',body:JSON.stringify({pan_id:order.pan_id,count:cur+1}),headers:{'Prefer':'resolution=merge-duplicates'}});
+  // Time stats
+  const tsArr=await api('time_stats?pan_id=eq.'+order.pan_id)||[];
+  const ts=tsArr[0]||{sum_sec:0,count:0,min_sec:null,max_sec:null};
+  await api('time_stats',{method:'POST',body:JSON.stringify({pan_id:order.pan_id,sum_sec:(ts.sum_sec||0)+elapsed,count:(ts.count||0)+1,min_sec:ts.min_sec==null?elapsed:Math.min(ts.min_sec,elapsed),max_sec:ts.max_sec==null?elapsed:Math.max(ts.max_sec,elapsed)}),headers:{'Prefer':'resolution=merge-duplicates'}});
+  // Staff stats
+  const sk=encargado.replace(/[^a-zA-Z0-9_]/g,'_');
+  const ssArr=await api('staff_stats?staff_key=eq.'+sk+'&station=eq.'+order.station)||[];
+  const ss=ssArr[0]||{count:0,sum_sec:0};
+  await api('staff_stats',{method:'POST',body:JSON.stringify({id:sk+'_'+order.station,staff_key:sk,station:order.station,nombre:encargado,count:(ss.count||0)+1,sum_sec:(ss.sum_sec||0)+elapsed}),headers:{'Prefer':'resolution=merge-duplicates'}});
+  // History
+  const fecha=new Date().toISOString().slice(0,10);
+  await api('history',{method:'POST',body:JSON.stringify({id:'h_'+Date.now(),fecha,label:order.label,pan_id:order.pan_id,station:order.station,encargado,elapsed_sec:elapsed,done_at:Date.now()})});
 }
 
+// ---- Realtime ----
+async function init(){
+  // Staff list
+  const cfgArr=await api("config?key=eq.staff_list")||[];
+  if(cfgArr[0]?.value)STAFF=cfgArr[0].value;
+  // Turno
+  const turnoArr=await api('turno_actual?select=*')||[];
+  if(turnoArr[0]?.encargados)encargadosObj=turnoArr[0].encargados;
+  // Orders
+  ordersArr=await api("orders?status=eq.pending&select=*&order=created_at.asc")||[];
+  ordersArr.forEach(o=>seenIds.add(o.id));
+  buildTurnoOverlay();actualizarBadges();render();
+  wsListen('orders',msg=>{
+    const r=msg.payload?.record;
+    if(!r)return;
+    if(msg.event==='INSERT'&&r.status==='pending'){
+      ordersArr.push(r);
+      if(!firstLoad){encolarAnuncio(r.art,r.label);notificar(r.label,r.station);}
+      render();
+    }
+    if(msg.event==='UPDATE'){
+      const i=ordersArr.findIndex(o=>o.id===r.id);
+      if(r.status==='ready'||r.status==='done'){if(i>-1)ordersArr.splice(i,1);}
+      else if(i>-1)ordersArr[i]=r;
+      render();
+    }
+  });
+  firstLoad=false;
+}
 
-// La sincronización ahora corre por Firebase Realtime Database (ver ordersRef.on arriba).
+$('unlockBtn').onclick=()=>{
+  $('unlockBg').style.display='none';
+  try{const A=window.AudioContext||window.webkitAudioContext;if(A){const c=new A();c.resume();}}catch(e){}
+  try{if(window.speechSynthesis){const u=new SpeechSynthesisUtterance('Listo');u.lang='es';u.volume=0.01;speechSynthesis.speak(u);}}catch(e){}
+  try{if('wakeLock' in navigator)navigator.wakeLock.request('screen').then(wl=>{wakeLock=wl;}).catch(()=>{});}catch(e){}
+};
 
+$('soundToggle').onclick=()=>{soundOn=!soundOn;$('soundToggle').textContent=soundOn?'🔊 Sonido: ON':'🔇 Sonido: OFF';$('soundToggle').classList.toggle('off',!soundOn);if(!soundOn){try{speechSynthesis.cancel();}catch(e){}}};
+$('recuentoBtn').onclick=()=>{const p=ordersArr.filter(o=>o.status==='pending').sort((a,b)=>a.created_at-b.created_at);if(!p.length)return;p.forEach(o=>encolarAnuncio(o.art,o.label));};
+$('fullscreenBtn').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});else document.exitFullscreen();};
+$('clearAllBtn').onclick=()=>{if(confirm('¿Vaciar TODA la cola?')){api('orders?status=eq.pending',{method:'DELETE',headers:{'Prefer':''}});ordersArr=[];render();try{speechSynthesis.cancel();}catch(e){}speechChain=Promise.resolve();}};
+
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+init();
 </script>
 </body>
 </html>

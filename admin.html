@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Admin — Chifa Pedidos</title>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#111;font-family:'Segoe UI',Arial,sans-serif;color:#eee;min-height:100vh;padding:24px 16px 60px}
@@ -13,63 +11,40 @@ h1{font-size:22px;margin-bottom:4px}
 .sub{color:#888;font-size:13px;margin-bottom:24px}
 nav{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
 nav a{color:#caa86a;font-size:13px;text-decoration:none;border:1px solid #444;border-radius:6px;padding:5px 12px}
-nav a:hover{background:#222}
-
 .section{background:#1a1a1a;border-radius:14px;padding:18px 20px;margin-bottom:18px;border:1px solid #2a2a2a}
-.section h2{font-size:15px;color:#ccc;margin-bottom:14px;display:flex;align-items:center;gap:8px}
-
-/* Turno actual */
+.section h2{font-size:15px;color:#ccc;margin-bottom:14px}
 .turno-info{display:flex;gap:14px;flex-wrap:wrap}
 .turno-card{flex:1;min-width:140px;background:#252525;border-radius:10px;padding:12px 14px;border-left:4px solid #444}
-.turno-card.chaufero{border-color:#c8a84b}
-.turno-card.frituras{border-color:#c87d3a}
-.turno-card.saltado{border-color:#b53030}
+.turno-card.chaufero{border-color:#c8a84b}.turno-card.frituras{border-color:#c87d3a}.turno-card.saltado{border-color:#b53030}
 .turno-card .st-label{font-size:11px;color:#888;margin-bottom:4px}
 .turno-card .st-name{font-size:16px;font-weight:700;color:#fff}
-.turno-card .st-sub{font-size:11px;color:#aaa;margin-top:2px}
-
-/* Staff stats */
 .staff-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
 .staff-card{background:#222;border-radius:12px;padding:14px 16px;border:1px solid #333}
 .staff-card .s-name{font-size:16px;font-weight:700;margin-bottom:10px;color:#fff}
-.s-station{display:flex;justify-content:space-between;align-items:center;
-  padding:6px 8px;background:#1a1a1a;border-radius:8px;margin-bottom:6px}
+.s-station{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:#1a1a1a;border-radius:8px;margin-bottom:6px}
 .s-station .s-st-name{font-size:12px;color:#bbb}
-.s-station .s-nums{text-align:right}
-.s-station .s-count{font-size:15px;font-weight:700;color:#f0c450}
-.s-station .s-avg{font-size:11px;color:#888}
+.s-count{font-size:15px;font-weight:700;color:#f0c450}
+.s-avg{font-size:11px;color:#888}
 .s-total{margin-top:8px;font-size:12px;color:#aaa;text-align:right}
-
-/* Top performers */
 .podium{display:flex;gap:12px;flex-wrap:wrap}
 .podium-card{flex:1;min-width:140px;background:#222;border-radius:10px;padding:12px;text-align:center}
 .podium-icon{font-size:28px}
 .podium-name{font-size:14px;font-weight:700;margin:4px 0 2px;color:#fff}
 .podium-val{font-size:12px;color:#aaa}
-
-/* Productos */
 .prod-list{display:flex;flex-direction:column;gap:6px}
-.prod-row{display:flex;align-items:center;gap:10px;padding:8px 10px;
-  background:#222;border-radius:8px}
+.prod-row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:#222;border-radius:8px}
 .prod-bar-wrap{flex:1;background:#2a2a2a;border-radius:4px;height:8px;overflow:hidden}
 .prod-bar{height:100%;border-radius:4px;background:#b53030;transition:width .4s}
 .prod-name{width:130px;font-size:12px;color:#ccc;flex-shrink:0}
 .prod-count{font-size:13px;font-weight:700;color:#f0c450;width:32px;text-align:right;flex-shrink:0}
 .prod-avg{font-size:11px;color:#888;width:60px;text-align:right;flex-shrink:0}
-
 .empty-state{color:#555;font-size:13px;padding:16px 0}
-
-.btn-danger{background:#7a1d1d;color:#fff;border:none;border-radius:8px;
-  padding:8px 14px;font-size:12px;cursor:pointer;margin-top:10px}
-.btn-danger:hover{background:#a33}
+.btn-danger{background:#7a1d1d;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;cursor:pointer;margin-top:10px}
 .staff-edit-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
-.staff-edit-row input{background:#222;border:1px solid #444;color:#fff;border-radius:6px;
-  padding:6px 10px;font-size:13px;width:160px}
-.staff-edit-row button{background:#2e7d4f;color:#fff;border:none;border-radius:6px;
-  padding:7px 12px;font-size:13px;cursor:pointer}
-.staff-tag{display:inline-flex;align-items:center;gap:6px;background:#252525;
-  border:1px solid #444;border-radius:20px;padding:4px 10px;font-size:12px;margin:3px}
-.staff-tag button{background:none;border:none;color:#f08d75;cursor:pointer;font-size:14px;line-height:1}
+.staff-edit-row input{background:#222;border:1px solid #444;color:#fff;border-radius:6px;padding:6px 10px;font-size:13px;width:160px}
+.staff-edit-row button{background:#2e7d4f;color:#fff;border:none;border-radius:6px;padding:7px 12px;font-size:13px;cursor:pointer}
+.staff-tag{display:inline-flex;align-items:center;gap:6px;background:#252525;border:1px solid #444;border-radius:20px;padding:4px 10px;font-size:12px;margin:3px}
+.staff-tag button{background:none;border:none;color:#f08d75;cursor:pointer;font-size:14px}
 .hist-resumen{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
 .hist-kpi{background:#222;border-radius:10px;padding:12px 16px;text-align:center;flex:1;min-width:100px}
 .hist-kpi .kval{font-size:22px;font-weight:800;color:#f0c450}
@@ -77,339 +52,164 @@ nav a:hover{background:#222}
 .hist-tabla{width:100%;border-collapse:collapse;font-size:13px}
 .hist-tabla th{text-align:left;padding:6px 10px;color:#888;border-bottom:1px solid #2a2a2a;font-weight:600}
 .hist-tabla td{padding:7px 10px;border-bottom:1px solid #1e1e1e;color:#ddd}
-.hist-tabla tr:last-child td{border-bottom:none}
+input[type=date]{background:#222;border:1px solid #444;color:#fff;border-radius:8px;padding:8px 12px;font-size:14px}
+.hist-btn{background:#b53030;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:14px;cursor:pointer}
 </style>
 </head>
 <body>
-
 <h1>📊 Panel de Administración</h1>
-<p class="sub">Métricas en tiempo real del turno actual</p>
+<p class="sub">Métricas en tiempo real</p>
+<nav><a href="caja.html">🧾 Caja</a><a href="cocina.html">👨‍🍳 Cocina</a></nav>
 
-<nav>
-  <a href="caja.html">🧾 Ir a Caja</a>
-  <a href="cocina.html">👨‍🍳 Ir a Cocina</a>
-</nav>
-
-<!-- Turno actual -->
-<div class="section">
-  <h2>🕐 Turno actual</h2>
-  <div id="turnoInfo" class="turno-info">
-    <div class="empty-state">Cargando...</div>
-  </div>
-</div>
-
-<!-- Staff stats -->
-<div class="section">
-  <h2>👥 Rendimiento por encargado (turno actual)</h2>
-  <div id="staffGrid" class="staff-grid">
-    <div class="empty-state">Sin datos aún — los datos aparecen cuando cocina marca pedidos como listos.</div>
-  </div>
-</div>
-
-<!-- Top performer -->
-<div class="section">
-  <h2>🏆 Destacados del turno</h2>
-  <div id="podiumWrap" class="podium">
-    <div class="empty-state">Sin datos suficientes aún.</div>
-  </div>
-</div>
-
-<!-- Historial por fecha -->
-<div class="section">
-  <h2>📅 Historial por día</h2>
+<div class="section"><h2>🕐 Turno actual</h2><div id="turnoInfo" class="turno-info"><div class="empty-state">Cargando...</div></div></div>
+<div class="section"><h2>👥 Rendimiento por encargado</h2><div id="staffGrid" class="staff-grid"><div class="empty-state">Sin datos aún.</div></div></div>
+<div class="section"><h2>🏆 Destacados del turno</h2><div id="podiumWrap" class="podium"><div class="empty-state">Sin datos suficientes.</div></div></div>
+<div class="section"><h2>📅 Historial por día</h2>
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-    <input type="date" id="historialDate" style="background:#222;border:1px solid #444;color:#fff;
-      border-radius:8px;padding:8px 12px;font-size:14px">
-    <button id="historialBtn" style="background:#b53030;color:#fff;border:none;border-radius:8px;
-      padding:8px 16px;font-size:14px;cursor:pointer">Ver día</button>
+    <input type="date" id="historialDate">
+    <button class="hist-btn" id="historialBtn">Ver día</button>
     <span id="historialMeta" style="color:#888;font-size:12px"></span>
   </div>
-  <div id="historialContent">
-    <div class="empty-state">Selecciona una fecha para ver el historial.</div>
-  </div>
+  <div id="historialContent"><div class="empty-state">Selecciona una fecha.</div></div>
 </div>
-
-<!-- Productos más pedidos -->
-<div class="section">
-  <h2>📦 Productos — pedidos completados hoy</h2>
-  <div id="prodList" class="prod-list">
-    <div class="empty-state">Sin datos aún.</div>
-  </div>
-</div>
-
-<!-- Lista de personal configurable -->
-<div class="section">
-  <h2>⚙️ Gestión de personal</h2>
-  <p style="font-size:12px;color:#888;margin-bottom:10px">
-    Estos nombres aparecen en el selector de encargados al iniciar turno en Cocina.
-  </p>
-  <div class="staff-edit-row">
-    <input id="newStaffInput" type="text" placeholder="Nombre del trabajador" maxlength="20">
-    <button id="addStaffBtn">+ Agregar</button>
-  </div>
+<div class="section"><h2>📦 Productos más pedidos hoy</h2><div id="prodList" class="prod-list"><div class="empty-state">Sin datos aún.</div></div></div>
+<div class="section"><h2>⚙️ Gestión de personal</h2>
+  <p style="font-size:12px;color:#888;margin-bottom:10px">Estos nombres aparecen en el selector de encargados en Cocina.</p>
+  <div class="staff-edit-row"><input id="newStaffInput" type="text" placeholder="Nombre" maxlength="20"><button id="addStaffBtn">+ Agregar</button></div>
   <div id="staffTagList"></div>
   <button class="btn-danger" id="resetStaffStatsBtn">🗑 Reiniciar estadísticas de encargados</button>
 </div>
 
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyARmR4JyJXwaleuEHws1cfVfhgZyGClKi8",
-  authDomain: "chifa-pedidos.firebaseapp.com",
-  databaseURL: "https://chifa-pedidos-default-rtdb.firebaseio.com",
-  projectId: "chifa-pedidos",
-  storageBucket: "chifa-pedidos.firebasestorage.app",
-  messagingSenderId: "692981905741",
-  appId: "1:692981905741:web:5e2c28ac898f5429141f04"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const $ = id => document.getElementById(id);
+const SB_URL='https://vjmnbzjtvuwqowxvknlu.supabase.co';
+const SB_KEY='sb_publishable_yhqceljyEg06FUWyJlpfUA_vtOBkyne';
+const STATION_LABELS={chaufero:'🍚 Chaufero',frituras:'🍤 Frituras',saltado:'🥘 Saltado'};
+const STATION_LIST=['chaufero','frituras','saltado'];
+const $=id=>document.getElementById(id);
+let staffList=[];
 
-const STATION_LABELS = {chaufero:'🍚 Chaufero', frituras:'🍤 Frituras', saltado:'🥘 Saltado'};
-const STATION_LIST = ['chaufero','frituras','saltado'];
-
-let turnoData = null, staffStatsData = {}, statsData = {}, timeStatsData = {}, panesData = {}, staffList = [];
-
-function formatTime(sec){
-  if(!sec && sec !== 0) return '–';
-  if(sec < 60) return sec + 's';
-  const m = Math.floor(sec/60), s = Math.round(sec%60);
-  return m + 'm' + (s>0?' '+s+'s':'');
+async function api(path,opts={}){
+  const res=await fetch(SB_URL+'/rest/v1/'+path,{
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':opts.prefer||'return=representation',...(opts.headers||{})},
+    ...opts
+  });
+  const txt=await res.text();return txt?JSON.parse(txt):null;
 }
 
-// ---- Turno actual ----
-db.ref('turno_actual').on('value', snap => {
-  turnoData = snap.val();
-  renderTurno();
-});
+function formatTime(sec){if(!sec&&sec!==0)return'–';if(sec<60)return sec+'s';const m=Math.floor(sec/60),s=Math.round(sec%60);return m+'m'+(s>0?' '+s+'s':'');}
 
-function renderTurno(){
-  const wrap = $('turnoInfo');
-  if(!turnoData || !turnoData.encargados){
-    wrap.innerHTML = '<div class="empty-state">No hay turno activo. Inicia uno desde Cocina.</div>';
-    return;
+async function loadAll(){
+  // Turno
+  const turno=(await api('turno_actual?select=*')||[])[0];
+  const ti=$('turnoInfo');
+  if(!turno||!turno.encargados){ti.innerHTML='<div class="empty-state">No hay turno activo.</div>';}
+  else{
+    const enc=turno.encargados;
+    const inicio=turno.inicio?new Date(turno.inicio).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}):'–';
+    ti.innerHTML=`<div style="color:#888;font-size:12px;align-self:center">Inicio: ${inicio} · ${turno.fecha||''}</div>`+
+      STATION_LIST.map(st=>`<div class="turno-card ${st}"><div class="st-label">${STATION_LABELS[st]}</div><div class="st-name">${enc[st]||'Sin asignar'}</div></div>`).join('');
   }
-  const enc = turnoData.encargados;
-  const inicio = turnoData.inicio ? new Date(turnoData.inicio).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}) : '–';
-  wrap.innerHTML = `
-    <div style="color:#888;font-size:12px;align-self:center">Inicio: ${inicio} · ${turnoData.fecha||''}</div>
-    ${STATION_LIST.map(st => `
-      <div class="turno-card ${st}">
-        <div class="st-label">${STATION_LABELS[st]}</div>
-        <div class="st-name">${enc[st]||'Sin asignar'}</div>
-      </div>
-    `).join('')}
-  `;
-}
 
-// ---- Staff stats ----
-db.ref('staff_stats').on('value', snap => {
-  staffStatsData = snap.val() || {};
-  renderStaff();
-  renderPodium();
-});
-
-function renderStaff(){
-  const wrap = $('staffGrid');
-  const keys = Object.keys(staffStatsData);
-  if(keys.length === 0){
-    wrap.innerHTML = '<div class="empty-state">Sin datos aún — los datos aparecen cuando cocina marca pedidos como listos.</div>';
-    return;
-  }
-  wrap.innerHTML = '';
-  keys.forEach(key => {
-    const stData = staffStatsData[key];
-    const nombre = stData[Object.keys(stData)[0]]?.nombre || key.replace(/_/g,' ');
-    let totalPedidos = 0;
-    const card = document.createElement('div');
-    card.className = 'staff-card';
-    let rows = '';
-    STATION_LIST.forEach(st => {
-      if(!stData[st]) return;
-      const d = stData[st];
-      totalPedidos += (d.count||0);
-      const avg = d.count > 0 ? Math.round(d.sumSec / d.count) : null;
-      rows += `<div class="s-station">
-        <span class="s-st-name">${STATION_LABELS[st]}</span>
-        <div class="s-nums">
-          <div class="s-count">${d.count||0} 🍽</div>
-          <div class="s-avg">⏱ ${formatTime(avg)}</div>
-        </div>
-      </div>`;
+  // Staff stats
+  const ssArr=await api('staff_stats?select=*')||[];
+  const ssMap={};
+  ssArr.forEach(r=>{if(!ssMap[r.staff_key])ssMap[r.staff_key]={nombre:r.nombre,stations:{}};ssMap[r.staff_key].stations[r.station]=r;});
+  const staffGrid=$('staffGrid');staffGrid.innerHTML='';
+  const entries=[];
+  Object.keys(ssMap).forEach(key=>{
+    const d=ssMap[key];let total=0,sumSec=0;
+    Object.values(d.stations).forEach(s=>{total+=s.count||0;sumSec+=s.sum_sec||0;});
+    if(total>0)entries.push({key,nombre:d.nombre,total,avg:Math.round(sumSec/total),stations:d.stations});
+    const card=document.createElement('div');card.className='staff-card';
+    let rows='';
+    STATION_LIST.forEach(st=>{
+      if(!d.stations[st])return;
+      const s=d.stations[st];const avg=s.count>0?Math.round(s.sum_sec/s.count):null;
+      rows+=`<div class="s-station"><span class="s-st-name">${STATION_LABELS[st]}</span><div><div class="s-count">${s.count||0} 🍽</div><div class="s-avg">⏱ ${formatTime(avg)}</div></div></div>`;
     });
-    card.innerHTML = `<div class="s-name">👤 ${nombre}</div>${rows}
-      <div class="s-total">Total: ${totalPedidos} pedidos completados</div>`;
-    wrap.appendChild(card);
+    card.innerHTML=`<div class="s-name">👤 ${d.nombre}</div>${rows}<div class="s-total">Total: ${total} pedidos</div>`;
+    staffGrid.appendChild(card);
   });
-}
+  if(!Object.keys(ssMap).length)staffGrid.innerHTML='<div class="empty-state">Sin datos aún.</div>';
 
-function renderPodium(){
-  const wrap = $('podiumWrap');
-  const entries = [];
-  Object.keys(staffStatsData).forEach(key => {
-    const stData = staffStatsData[key];
-    const nombre = stData[Object.keys(stData)[0]]?.nombre || key.replace(/_/g,' ');
-    let total = 0, sumSec = 0;
-    Object.values(stData).forEach(d => {
-      if(typeof d === 'object' && d.count){
-        total += d.count;
-        sumSec += d.sumSec||0;
-      }
+  // Podium
+  const pw=$('podiumWrap');pw.innerHTML='';
+  if(entries.length){
+    const byTotal=[...entries].sort((a,b)=>b.total-a.total);
+    const byAvg=[...entries].filter(e=>e.avg>0).sort((a,b)=>a.avg-b.avg);
+    [{icon:'🥇',label:'Más pedidos',entry:byTotal[0],val:byTotal[0]?.total+' pedidos'},
+     {icon:'⚡',label:'Más rápido',entry:byAvg[0],val:formatTime(byAvg[0]?.avg)+' promedio'},
+     {icon:'🏅',label:'Segundo lugar',entry:byTotal[1],val:byTotal[1]?.total+' pedidos'}
+    ].forEach(m=>{if(!m.entry)return;const c=document.createElement('div');c.className='podium-card';c.innerHTML=`<div class="podium-icon">${m.icon}</div><div class="podium-name">${m.entry.nombre}</div><div class="podium-val">${m.label}</div><div class="podium-val" style="color:#f0c450">${m.val}</div>`;pw.appendChild(c);});
+  } else pw.innerHTML='<div class="empty-state">Sin datos suficientes.</div>';
+
+  // Productos
+  const statsArr=await api('stats?select=*')||[];
+  const tsArr=await api('time_stats?select=*')||[];
+  const panesArr=await api('panes?select=*')||[];
+  const tsMap={};tsArr.forEach(t=>tsMap[t.pan_id]=t);
+  const stMap={};statsArr.forEach(s=>stMap[s.pan_id]=s.count||0);
+  const withData=panesArr.filter(p=>stMap[p.id]>0).sort((a,b)=>(stMap[b.id]||0)-(stMap[a.id]||0));
+  const pl=$('prodList');pl.innerHTML='';
+  const max=stMap[withData[0]?.id]||1;
+  if(withData.length){
+    withData.forEach(p=>{
+      const count=stMap[p.id]||0;const t=tsMap[p.id];const avg=t&&t.count>0?Math.round(t.sum_sec/t.count):null;
+      const pct=Math.round((count/max)*100);
+      const row=document.createElement('div');row.className='prod-row';
+      row.innerHTML=`<div class="prod-name">${p.label}</div><div class="prod-bar-wrap"><div class="prod-bar" style="width:${pct}%"></div></div><div class="prod-count">${count}</div><div class="prod-avg">⏱ ${formatTime(avg)}</div>`;
+      pl.appendChild(row);
     });
-    if(total > 0) entries.push({nombre, total, avg: Math.round(sumSec/total)});
-  });
-  if(entries.length === 0){
-    wrap.innerHTML = '<div class="empty-state">Sin datos suficientes aún.</div>';
-    return;
-  }
-  const byTotal = [...entries].sort((a,b)=>b.total-a.total);
-  const byAvg  = [...entries].filter(e=>e.avg>0).sort((a,b)=>a.avg-b.avg);
-  wrap.innerHTML = '';
-  const medals = [
-    {icon:'🥇', label:'Más pedidos completados', entry:byTotal[0], val: byTotal[0]?.total + ' pedidos'},
-    {icon:'⚡', label:'Tiempo promedio más rápido', entry:byAvg[0], val: formatTime(byAvg[0]?.avg) + ' promedio'},
-    {icon:'🏅', label:'Segundo lugar', entry:byTotal[1], val: byTotal[1]?.total + ' pedidos'}
-  ];
-  medals.forEach(m => {
-    if(!m.entry) return;
-    const card = document.createElement('div');
-    card.className = 'podium-card';
-    card.innerHTML = `<div class="podium-icon">${m.icon}</div>
-      <div class="podium-name">${m.entry.nombre}</div>
-      <div class="podium-val">${m.label}</div>
-      <div class="podium-val" style="color:#f0c450;margin-top:2px">${m.val}</div>`;
-    wrap.appendChild(card);
-  });
-}
+  } else pl.innerHTML='<div class="empty-state">Sin datos aún.</div>';
 
-// ---- Productos ----
-db.ref('stats').on('value', snap => { statsData = snap.val()||{}; renderProds(); });
-db.ref('time_stats').on('value', snap => { timeStatsData = snap.val()||{}; renderProds(); });
-db.ref('panes').on('value', snap => { panesData = snap.val()||{}; renderProds(); });
-
-function renderProds(){
-  const wrap = $('prodList');
-  const panes = Object.keys(panesData).map(id => ({id, ...panesData[id]}));
-  const withData = panes.filter(p => statsData[p.id] > 0);
-  if(withData.length === 0){
-    wrap.innerHTML = '<div class="empty-state">Sin datos aún.</div>';
-    return;
-  }
-  withData.sort((a,b) => (statsData[b.id]||0) - (statsData[a.id]||0));
-  const max = statsData[withData[0].id] || 1;
-  wrap.innerHTML = '';
-  withData.forEach(p => {
-    const count = statsData[p.id]||0;
-    const t = timeStatsData[p.id];
-    const avg = t && t.count > 0 ? Math.round(t.sumSec/t.count) : null;
-    const pct = Math.round((count/max)*100);
-    const row = document.createElement('div');
-    row.className = 'prod-row';
-    row.innerHTML = `
-      <div class="prod-name">${p.label}</div>
-      <div class="prod-bar-wrap"><div class="prod-bar" style="width:${pct}%"></div></div>
-      <div class="prod-count">${count}</div>
-      <div class="prod-avg">⏱ ${formatTime(avg)}</div>
-    `;
-    wrap.appendChild(row);
-  });
-}
-
-// ---- Gestión de personal ----
-db.ref('staff_list').on('value', snap => {
-  staffList = snap.val() || ['Jhon','Marco','Luis','Ana','Carlos','Rosa','Pedro','María'];
+  // Staff list
+  const cfg=(await api("config?key=eq.staff_list")||[])[0];
+  staffList=cfg?.value||['Jhon','Marco','Luis','Ana','Carlos','Rosa','Pedro','María'];
   renderStaffTags();
-});
-
-function renderStaffTags(){
-  const wrap = $('staffTagList');
-  wrap.innerHTML = '';
-  staffList.forEach((name,i) => {
-    const tag = document.createElement('span');
-    tag.className = 'staff-tag';
-    tag.innerHTML = `${name} <button onclick="removeStaff(${i})">×</button>`;
-    wrap.appendChild(tag);
-  });
 }
 
-$('addStaffBtn').onclick = () => {
-  const name = $('newStaffInput').value.trim();
-  if(!name) return;
-  if(staffList.includes(name)){ alert('Ya existe ese nombre'); return; }
-  staffList.push(name);
-  db.ref('staff_list').set(staffList);
-  $('newStaffInput').value = '';
-};
-
-window.removeStaff = (i) => {
-  if(!confirm('¿Eliminar a ' + staffList[i] + ' de la lista?')) return;
-  staffList.splice(i,1);
-  db.ref('staff_list').set(staffList);
-};
-
-$('resetStaffStatsBtn').onclick = () => {
-  if(confirm('¿Reiniciar TODAS las estadísticas de encargados? Los datos de pedidos y tiempos de productos NO se borran.')){
-    db.ref('staff_stats').remove();
-  }
-};
-
-// ---- Historial ----
-// Setear fecha de hoy por defecto
-const hoy = new Date().toISOString().slice(0,10);
-$('historialDate').value = hoy;
-$('historialDate').max = hoy;
-
-$('historialBtn').onclick = cargarHistorial;
-
-function cargarHistorial(){
-  const fecha = $('historialDate').value;
-  if(!fecha) return;
-  $('historialContent').innerHTML = '<div class="empty-state">Cargando...</div>';
-  db.ref('history/' + fecha).once('value', snap => {
-    const data = snap.val();
-    if(!data){
-      $('historialContent').innerHTML = '<div class="empty-state">Sin datos para este día.</div>';
-      $('historialMeta').textContent = '';
-      return;
-    }
-    const registros = Object.values(data).sort((a,b) => a.doneAt - b.doneAt);
-    const total = registros.length;
-    const avgSec = total > 0 ? Math.round(registros.reduce((s,r)=>s+(r.elapsedSec||0),0)/total) : 0;
-    const encargadoCount = {};
-    const productoCount = {};
-    registros.forEach(r => {
-      encargadoCount[r.encargado||'Caja'] = (encargadoCount[r.encargado||'Caja']||0)+1;
-      productoCount[r.label] = (productoCount[r.label]||0)+1;
-    });
-    const topEnc = Object.entries(encargadoCount).sort((a,b)=>b[1]-a[1])[0];
-    const topProd = Object.entries(productoCount).sort((a,b)=>b[1]-a[1])[0];
-    $('historialMeta').textContent = new Date(fecha+'T12:00:00').toLocaleDateString('es-PE',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-    $('historialContent').innerHTML = `
-      <div class="hist-resumen">
-        <div class="hist-kpi"><div class="kval">${total}</div><div class="klabel">Pedidos completados</div></div>
-        <div class="hist-kpi"><div class="kval">${formatTime(avgSec)}</div><div class="klabel">Tiempo promedio</div></div>
-        <div class="hist-kpi"><div class="kval">${topProd?topProd[0]:'–'}</div><div class="klabel">Plato más pedido (${topProd?topProd[1]:0})</div></div>
-        <div class="hist-kpi"><div class="kval">${topEnc?topEnc[0]:'–'}</div><div class="klabel">Encargado más activo (${topEnc?topEnc[1]:0})</div></div>
-      </div>
-      <table class="hist-tabla">
-        <thead><tr>
-          <th>#</th><th>Plato</th><th>Estación</th><th>Encargado</th><th>Tiempo</th><th>Hora</th>
-        </tr></thead>
-        <tbody>${registros.map((r,i)=>`<tr>
-          <td>${i+1}</td>
-          <td>${r.label}</td>
-          <td>${STATION_LABELS[r.station]||r.station||'–'}</td>
-          <td>${r.encargado||'Caja'}</td>
-          <td>${formatTime(r.elapsedSec)}</td>
-          <td>${r.doneAt ? new Date(r.doneAt).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}) : '–'}</td>
-        </tr>`).join('')}</tbody>
-      </table>`;
-  });
+// Historial
+const hoy=new Date().toISOString().slice(0,10);
+$('historialDate').value=hoy;$('historialDate').max=hoy;
+$('historialBtn').onclick=cargarHistorial;
+async function cargarHistorial(){
+  const fecha=$('historialDate').value;if(!fecha)return;
+  $('historialContent').innerHTML='<div class="empty-state">Cargando...</div>';
+  const registros=await api('history?fecha=eq.'+fecha+'&select=*&order=done_at.asc')||[];
+  if(!registros.length){$('historialContent').innerHTML='<div class="empty-state">Sin datos para este día.</div>';$('historialMeta').textContent='';return;}
+  const total=registros.length;
+  const avgSec=total>0?Math.round(registros.reduce((s,r)=>s+(r.elapsed_sec||0),0)/total):0;
+  const encMap={},prodMap={};
+  registros.forEach(r=>{encMap[r.encargado||'Caja']=(encMap[r.encargado||'Caja']||0)+1;prodMap[r.label]=(prodMap[r.label]||0)+1;});
+  const topEnc=Object.entries(encMap).sort((a,b)=>b[1]-a[1])[0];
+  const topProd=Object.entries(prodMap).sort((a,b)=>b[1]-a[1])[0];
+  $('historialMeta').textContent=new Date(fecha+'T12:00:00').toLocaleDateString('es-PE',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  $('historialContent').innerHTML=`
+    <div class="hist-resumen">
+      <div class="hist-kpi"><div class="kval">${total}</div><div class="klabel">Pedidos completados</div></div>
+      <div class="hist-kpi"><div class="kval">${formatTime(avgSec)}</div><div class="klabel">Tiempo promedio</div></div>
+      <div class="hist-kpi"><div class="kval">${topProd?topProd[0]:'–'}</div><div class="klabel">Plato más pedido (${topProd?topProd[1]:0})</div></div>
+      <div class="hist-kpi"><div class="kval">${topEnc?topEnc[0]:'–'}</div><div class="klabel">Más activo (${topEnc?topEnc[1]:0})</div></div>
+    </div>
+    <table class="hist-tabla"><thead><tr><th>#</th><th>Plato</th><th>Estación</th><th>Encargado</th><th>Tiempo</th><th>Hora</th></tr></thead>
+    <tbody>${registros.map((r,i)=>`<tr><td>${i+1}</td><td>${r.label}</td><td>${STATION_LABELS[r.station]||r.station||'–'}</td><td>${r.encargado||'Caja'}</td><td>${formatTime(r.elapsed_sec)}</td><td>${r.done_at?new Date(r.done_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}):'–'}</td></tr>`).join('')}</tbody></table>`;
 }
-
-// Cargar historial de hoy automáticamente al abrir
 cargarHistorial();
 
+// Personal
+function renderStaffTags(){
+  const w=$('staffTagList');w.innerHTML='';
+  staffList.forEach((n,i)=>{const t=document.createElement('span');t.className='staff-tag';t.innerHTML=`${n} <button onclick="removeStaff(${i})">×</button>`;w.appendChild(t);});
+}
+$('addStaffBtn').onclick=async()=>{
+  const n=$('newStaffInput').value.trim();if(!n)return;if(staffList.includes(n)){alert('Ya existe');return;}
+  staffList.push(n);await api('config',{method:'POST',body:JSON.stringify({key:'staff_list',value:JSON.stringify(staffList)}),headers:{'Prefer':'resolution=merge-duplicates'}});
+  $('newStaffInput').value='';renderStaffTags();
+};
+window.removeStaff=async i=>{if(!confirm('¿Eliminar a '+staffList[i]+'?'))return;staffList.splice(i,1);await api('config',{method:'POST',body:JSON.stringify({key:'staff_list',value:JSON.stringify(staffList)}),headers:{'Prefer':'resolution=merge-duplicates'}});renderStaffTags();};
+$('resetStaffStatsBtn').onclick=async()=>{if(confirm('¿Reiniciar todas las estadísticas de encargados?')){await api('staff_stats',{method:'DELETE',headers:{'Prefer':''}});loadAll();}};
+
+loadAll();
 </script>
 </body>
 </html>
