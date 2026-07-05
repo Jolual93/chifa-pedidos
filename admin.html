@@ -74,15 +74,21 @@ input[type=date]{background:#222;border:1px solid #444;color:#fff;border-radius:
 </div>
 <div class="section"><h2>📦 Productos más pedidos hoy</h2><div id="prodList" class="prod-list"><div class="empty-state">Sin datos aún.</div></div></div>
 <div class="section"><h2>⚙️ Gestión de personal</h2>
-  <p style="font-size:12px;color:#888;margin-bottom:10px">Estos nombres aparecen en el selector de encargados en Cocina.</p>
-  <div class="staff-edit-row"><input id="newStaffInput" type="text" placeholder="Nombre" maxlength="20"><button id="addStaffBtn">+ Agregar</button></div>
-  <div id="staffTagList"></div>
+  <p style="font-size:12px;color:#888;margin-bottom:12px">Estos nombres aparecen en el selector de encargados en Cocina. Los cambios se guardan al presionar "Guardar lista".</p>
+  <div class="staff-edit-row">
+    <input id="newStaffInput" type="text" placeholder="Nombre del trabajador" maxlength="20">
+    <button id="addStaffBtn">+ Agregar</button>
+  </div>
+  <div id="staffTagList" style="margin-bottom:12px"></div>
+  <button id="saveStaffBtn" style="background:#2e7d4f;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px">💾 Guardar lista</button>
+  <div id="saveStaffMsg" style="font-size:12px;color:#2e7d4f;display:none;margin-bottom:8px">✅ Lista guardada correctamente</div>
+  <br>
   <button class="btn-danger" id="resetStaffStatsBtn">🗑 Reiniciar estadísticas de encargados</button>
 </div>
 
 <script>
 const SB_URL='https://vjmnbzjtvuwqowxvknlu.supabase.co';
-const SB_KEY='sb_publishable_yhqceljyEg06FUWyJlpfUA_vtOBkyne';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqbW5iemp0dnV3cW93eHZrbmx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMjg5OTYsImV4cCI6MjA5ODcwNDk5Nn0.Z3TNYCnOytTwNyWnCfSj5NtgyxHdPfB0_Rz9jv6Bdro';
 const STATION_LABELS={chaufero:'🍚 Chaufero',frituras:'🍤 Frituras',saltado:'🥘 Saltado'};
 const STATION_LIST=['chaufero','frituras','saltado'];
 const $=id=>document.getElementById(id);
@@ -164,7 +170,7 @@ async function loadAll(){
 
   // Staff list
   const cfg=(await api("config?key=eq.staff_list")||[])[0];
-  staffList=cfg?.value||['Jhon','Marco','Luis','Ana','Carlos','Rosa','Pedro','María'];
+  staffList=cfg?.value||['Eloy','Jefferson','Benjamin','Victor','Jeremy'];
   renderStaffTags();
 }
 
@@ -199,14 +205,43 @@ cargarHistorial();
 // Personal
 function renderStaffTags(){
   const w=$('staffTagList');w.innerHTML='';
-  staffList.forEach((n,i)=>{const t=document.createElement('span');t.className='staff-tag';t.innerHTML=`${n} <button onclick="removeStaff(${i})">×</button>`;w.appendChild(t);});
+  staffList.forEach((n,i)=>{
+    const t=document.createElement('span');t.className='staff-tag';
+    t.innerHTML=`<span class="staff-name" id="sname-${i}">${n}</span>
+      <button onclick="editStaff(${i})" title="Editar" style="background:none;border:none;color:#caa86a;cursor:pointer;font-size:13px">✎</button>
+      <button onclick="removeStaff(${i})" title="Eliminar" style="background:none;border:none;color:#f08d75;cursor:pointer;font-size:14px">×</button>`;
+    w.appendChild(t);
+  });
 }
-$('addStaffBtn').onclick=async()=>{
-  const n=$('newStaffInput').value.trim();if(!n)return;if(staffList.includes(n)){alert('Ya existe');return;}
-  staffList.push(n);await api('config',{method:'POST',body:JSON.stringify({key:'staff_list',value:JSON.stringify(staffList)}),headers:{'Prefer':'resolution=merge-duplicates'}});
-  $('newStaffInput').value='';renderStaffTags();
+
+window.editStaff=i=>{
+  const span=$('sname-'+i);if(!span)return;
+  const original=staffList[i];
+  const input=document.createElement('input');
+  input.value=original;input.style.cssText='background:#333;border:1px solid #666;color:#fff;border-radius:4px;padding:2px 6px;font-size:12px;width:100px';
+  input.onkeydown=e=>{if(e.key==='Enter'){staffList[i]=input.value.trim()||original;renderStaffTags();}if(e.key==='Escape'){renderStaffTags();}};
+  input.onblur=()=>{staffList[i]=input.value.trim()||original;renderStaffTags();};
+  span.replaceWith(input);input.focus();input.select();
 };
-window.removeStaff=async i=>{if(!confirm('¿Eliminar a '+staffList[i]+'?'))return;staffList.splice(i,1);await api('config',{method:'POST',body:JSON.stringify({key:'staff_list',value:JSON.stringify(staffList)}),headers:{'Prefer':'resolution=merge-duplicates'}});renderStaffTags();};
+
+$('addStaffBtn').onclick=()=>{
+  const n=$('newStaffInput').value.trim();
+  if(!n){alert('Escribe un nombre');return;}
+  if(staffList.includes(n)){alert('Ese nombre ya existe');return;}
+  staffList.push(n);renderStaffTags();$('newStaffInput').value='';
+};
+
+$('saveStaffBtn').onclick=async()=>{
+  try{
+    await api('config',{method:'POST',body:JSON.stringify({key:'staff_list',value:JSON.stringify(staffList)}),headers:{'Prefer':'resolution=merge-duplicates'}});
+    const msg=$('saveStaffMsg');msg.style.display='block';setTimeout(()=>msg.style.display='none',3000);
+  }catch(e){alert('Error al guardar: '+e.message);}
+};
+
+window.removeStaff=i=>{
+  if(!confirm('¿Eliminar a '+staffList[i]+'?'))return;
+  staffList.splice(i,1);renderStaffTags();
+};
 $('resetStaffStatsBtn').onclick=async()=>{if(confirm('¿Reiniciar todas las estadísticas de encargados?')){await api('staff_stats',{method:'DELETE',headers:{'Prefer':''}});loadAll();}};
 
 loadAll();
