@@ -174,22 +174,40 @@ async function api(path, opts={}){
     if(!res.ok) throw new Error(txt);
     return txt?JSON.parse(txt):null;
   }catch(e){
-    $('connErr').classList.add('show');
+    // Solo mostrar error si es la carga inicial, no en operaciones de fondo
     throw e;
   }
 }
 
 function wsListen(table, cb){
   const url = SB_URL.replace('https','wss')+'/realtime/v1/websocket?apikey='+SB_KEY+'&vsn=1.0.0';
-  let ws;
+  let ws, pingTimer;
   function connect(){
     ws = new WebSocket(url);
     ws.onopen=()=>{
-      ws.send(JSON.stringify({topic:'realtime:public:'+table,event:'phx_join',payload:{},ref:'1'}));
-      setInterval(()=>ws.send(JSON.stringify({topic:'phoenix',event:'heartbeat',payload:{},ref:'hb'})),25000);
+      ws.send(JSON.stringify({
+        topic:'realtime:public:'+table,
+        event:'phx_join',
+        payload:{config:{postgres_changes:[
+          {event:'INSERT',schema:'public',table},
+          {event:'UPDATE',schema:'public',table},
+          {event:'DELETE',schema:'public',table}
+        ]}},
+        ref:'1'
+      }));
+      pingTimer=setInterval(()=>ws.send(JSON.stringify({topic:'phoenix',event:'heartbeat',payload:{},ref:'hb'})),25000);
     };
-    ws.onmessage=e=>{const m=JSON.parse(e.data);if(['INSERT','UPDATE','DELETE'].includes(m.event))cb(m);};
-    ws.onclose=()=>setTimeout(connect,3000);
+    ws.onmessage=e=>{
+      const m=JSON.parse(e.data);
+      if(m.event==='postgres_changes'&&m.payload?.data){
+        const d=m.payload.data;
+        cb({event:d.type,payload:{record:d.record,old_record:d.old_record}});
+        return;
+      }
+      if(['INSERT','UPDATE','DELETE'].includes(m.event))cb(m);
+    };
+    ws.onclose=()=>{clearInterval(pingTimer);setTimeout(connect,3000);};
+    ws.onerror=()=>ws.close();
   }
   connect();
 }
@@ -241,6 +259,21 @@ async function init(){
   });
   wsListen('stats', ()=>reloadStats());
   wsListen('time_stats', ()=>reloadTimeStats());
+
+  // Polling de respaldo cada 3s para capturar UPDATEs que el WebSocket pierda
+  setInterval(async()=>{
+    try{
+      const fresh = await api("orders?status=eq.pending&select=*&order=created_at.asc");
+      if(!fresh) return;
+      const prevIds = new Set(ordersArr.map(o=>o.id));
+      const freshIds = new Set(fresh.map(o=>o.id));
+      // Si hay diferencia, actualizar
+      let changed = fresh.length !== ordersArr.length;
+      if(!changed) fresh.forEach(o=>{ if(!prevIds.has(o.id)) changed=true; });
+      ordersArr.filter(o=>!freshIds.has(o.id)).forEach(()=>{ changed=true; });
+      if(changed){ ordersArr=fresh; render(); renderCola(); }
+    }catch(e){}
+  }, 3000);
 }
 
 async function reloadStats(){
