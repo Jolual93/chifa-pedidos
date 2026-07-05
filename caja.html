@@ -166,15 +166,21 @@ const $ = id => document.getElementById(id);
 
 async function api(path, opts={}){
   try{
+    const {headers:extraHeaders, prefer, ...restOpts} = opts;
     const res = await fetch(SB_URL+'/rest/v1/'+path,{
-      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':opts.prefer||'return=representation',...(opts.headers||{})},
-      ...opts
+      headers:{
+        'apikey':SB_KEY,
+        'Authorization':'Bearer '+SB_KEY,
+        'Content-Type':'application/json',
+        'Prefer': prefer || 'return=representation',
+        ...(extraHeaders||{})
+      },
+      ...restOpts
     });
     const txt = await res.text();
     if(!res.ok) throw new Error(txt);
     return txt?JSON.parse(txt):null;
   }catch(e){
-    // Solo mostrar error si es la carga inicial, no en operaciones de fondo
     throw e;
   }
 }
