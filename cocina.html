@@ -332,47 +332,52 @@ async function marcarListo(order){
   await api('history',{method:'POST',body:JSON.stringify({id:'h_'+Date.now(),fecha,label:order.label,pan_id:order.pan_id,station:order.station,encargado,elapsed_sec:elapsed,done_at:Date.now()})});
 }
 
-// ---- Realtime ----
-async function init(){
-  // Staff list
-  const cfgArr=await api("config?key=eq.staff_list")||[];
-  if(cfgArr[0]?.value)STAFF=cfgArr[0].value;
-  // Turno
-  const turnoArr=await api('turno_actual?select=*')||[];
-  if(turnoArr[0]?.encargados)encargadosObj=turnoArr[0].encargados;
-  // Orders
-  ordersArr=await api("orders?status=eq.pending&select=*&order=created_at.asc")||[];
-  ordersArr.forEach(o=>seenIds.add(o.id));
-  buildTurnoOverlay();actualizarBadges();render();
-  wsListen('orders',msg=>{
-    const r=msg.payload?.record;
-    if(!r)return;
-    if(msg.event==='INSERT'&&r.status==='pending'){
-      ordersArr.push(r);
-      if(!firstLoad){encolarAnuncio(r.art,r.label);notificar(r.label,r.station);}
-      render();
-    }
-    if(msg.event==='UPDATE'){
-      const i=ordersArr.findIndex(o=>o.id===r.id);
-      if(r.status==='ready'||r.status==='done'){if(i>-1)ordersArr.splice(i,1);}
-      else if(i>-1)ordersArr[i]=r;
-      render();
-    }
-  });
-  firstLoad=false;
+// ---- Sync principal por polling + WebSocket como bono ----
+let lastPollHash = '';
 
-  // Polling de respaldo cada 3s para sincronizar pedidos marcados desde caja
-  setInterval(async()=>{
-    try{
-      const fresh=await api("orders?status=eq.pending&select=*&order=created_at.asc");
-      if(!fresh)return;
-      const freshIds=new Set(fresh.map(o=>o.id));
-      let changed=fresh.length!==ordersArr.length;
-      if(!changed)fresh.forEach(o=>{if(!ordersArr.find(x=>x.id===o.id))changed=true;});
-      ordersArr.filter(o=>!freshIds.has(o.id)).forEach(()=>{changed=true;});
-      if(changed){ordersArr=fresh;render();}
-    }catch(e){}
-  },3000);
+async function pollOrders(){
+  try{
+    const fresh=await api("orders?status=eq.pending&select=*&order=created_at.asc");
+    if(!fresh) return;
+    const hash=fresh.map(o=>o.id+o.status).join(',');
+    if(hash===lastPollHash) return;
+    lastPollHash=hash;
+
+    // Detectar nuevos para anunciar
+    if(!firstLoad){
+      fresh.forEach(o=>{
+        if(!seenIds.has(o.id)){
+          encolarAnuncio(o.art||'un', o.label);
+          notificar(o.label, o.station);
+        }
+      });
+    }
+    fresh.forEach(o=>seenIds.add(o.id));
+    ordersArr=fresh;
+    render();
+  }catch(e){}
+}
+
+async function init(){
+  try{
+    const cfgArr=await api("config?key=eq.staff_list")||[];
+    if(cfgArr[0]?.value) STAFF=cfgArr[0].value;
+    const turnoArr=await api('turno_actual?select=*')||[];
+    if(turnoArr[0]?.encargados) encargadosObj=turnoArr[0].encargados;
+    ordersArr=await api("orders?status=eq.pending&select=*&order=created_at.asc")||[];
+    ordersArr.forEach(o=>seenIds.add(o.id));
+    lastPollHash=ordersArr.map(o=>o.id+o.status).join(',');
+    buildTurnoOverlay(); actualizarBadges(); render();
+    firstLoad=false;
+  }catch(e){ console.error('init error',e); }
+
+  // Polling cada 2 segundos — mecanismo principal
+  setInterval(pollOrders, 2000);
+
+  // WebSocket como bono para velocidad extra
+  try{
+    wsListen('orders', ()=>{ setTimeout(pollOrders, 300); });
+  }catch(e){}
 }
 
 $('unlockBtn').onclick=()=>{

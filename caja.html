@@ -213,67 +213,48 @@ function wsListen(table, cb){
 }
 
 let panes=[], ordersArr=[], statsObj={}, timeStatsObj={};
+let lastCajaHash='';
+
+async function pollCaja(){
+  try{
+    const fresh=await api("orders?status=eq.pending&select=*&order=created_at.asc");
+    if(!fresh) return;
+    const hash=fresh.map(o=>o.id).join(',');
+    if(hash===lastCajaHash) return;
+    lastCajaHash=hash;
+    // Detectar los que desaparecieron (fueron marcados listos desde cocina)
+    const freshIds=new Set(fresh.map(o=>o.id));
+    ordersArr.forEach(o=>{
+      if(!freshIds.has(o.id)) showToast('✅ Listo: '+o.label,'#2e7d4f');
+    });
+    ordersArr=fresh;
+    render(); renderCola();
+  }catch(e){}
+}
 
 async function init(){
-  // Cargar panes
-  let dbPanes = await api('panes?select=*');
-  if(!dbPanes || dbPanes.length===0){
-    // Seed inicial
-    for(const p of DEFAULT_PANES){
-      await api('panes',{method:'POST',body:JSON.stringify({id:p.id,label:p.label,color:p.color,col:p.col,r1:p.r1,r2:p.r2,station:p.station,art:p.art}),prefer:'resolution=merge-duplicates',headers:{'Prefer':'resolution=merge-duplicates'}});
-    }
-    dbPanes = DEFAULT_PANES;
-  }
-  panes = dbPanes.sort((a,b)=>(a.col-b.col)||(a.r1-b.r1));
+  try{
+    let dbPanes = await api('panes?select=*');
+    if(!dbPanes || dbPanes.length===0) dbPanes=DEFAULT_PANES;
+    panes = dbPanes.sort((a,b)=>(a.col-b.col)||(a.r1-b.r1));
+    ordersArr = await api("orders?status=eq.pending&select=*&order=created_at.asc") || [];
+    lastCajaHash=ordersArr.map(o=>o.id).join(',');
+    const statsArr = await api('stats?select=*') || [];
+    statsObj={}; statsArr.forEach(s=>statsObj[s.pan_id]=s.count||0);
+    const tsArr = await api('time_stats?select=*') || [];
+    timeStatsObj={}; tsArr.forEach(s=>timeStatsObj[s.pan_id]=s);
+    render(); renderCola();
+  }catch(e){ console.error('init error',e); }
 
-  // Cargar orders pendientes
-  ordersArr = await api("orders?status=eq.pending&select=*&order=created_at.asc") || [];
-  
-  // Cargar stats
-  const statsArr = await api('stats?select=*') || [];
-  statsObj={};
-  statsArr.forEach(s=>statsObj[s.pan_id]=s.count||0);
+  // Polling cada 2 segundos — mecanismo principal
+  setInterval(pollCaja, 2000);
 
-  const tsArr = await api('time_stats?select=*') || [];
-  timeStatsObj={};
-  tsArr.forEach(s=>timeStatsObj[s.pan_id]=s);
-
-  render();
-  renderCola();
-
-  // Realtime
-  wsListen('orders', msg=>{
-    const r = msg.payload?.record || msg.payload?.old_record;
-    if(msg.event==='INSERT' && r?.status==='pending'){
-      ordersArr.push(r); render(); renderCola();
-      showToast('Pedido enviado: '+r.label,'#2e7d4f');
-    }
-    if(msg.event==='UPDATE'){
-      const i=ordersArr.findIndex(o=>o.id===r.id);
-      if(r.status==='ready'||r.status==='done'){
-        if(i>-1) ordersArr.splice(i,1);
-        showToast('✅ Listo: '+r.label,'#2e7d4f');
-      } else if(i>-1) ordersArr[i]=r;
-      render(); renderCola();
-    }
-  });
-  wsListen('stats', ()=>reloadStats());
-  wsListen('time_stats', ()=>reloadTimeStats());
-
-  // Polling de respaldo cada 3s para capturar UPDATEs que el WebSocket pierda
-  setInterval(async()=>{
-    try{
-      const fresh = await api("orders?status=eq.pending&select=*&order=created_at.asc");
-      if(!fresh) return;
-      const prevIds = new Set(ordersArr.map(o=>o.id));
-      const freshIds = new Set(fresh.map(o=>o.id));
-      // Si hay diferencia, actualizar
-      let changed = fresh.length !== ordersArr.length;
-      if(!changed) fresh.forEach(o=>{ if(!prevIds.has(o.id)) changed=true; });
-      ordersArr.filter(o=>!freshIds.has(o.id)).forEach(()=>{ changed=true; });
-      if(changed){ ordersArr=fresh; render(); renderCola(); }
-    }catch(e){}
-  }, 3000);
+  // WebSocket como bono para velocidad extra
+  try{
+    wsListen('orders', ()=>setTimeout(pollCaja,300));
+    wsListen('stats', ()=>reloadStats());
+    wsListen('time_stats', ()=>reloadTimeStats());
+  }catch(e){}
 }
 
 async function reloadStats(){
