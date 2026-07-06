@@ -370,7 +370,11 @@ async function init(){
     const cfgArr=await api("config?key=eq.staff_list")||[];
     if(cfgArr[0]?.value) STAFF=cfgArr[0].value;
     const turnoArr=await api('turno_actual?select=*')||[];
-    if(turnoArr[0]?.encargados) encargadosObj=turnoArr[0].encargados;
+    if(turnoArr[0]?.encargados){
+      encargadosObj=turnoArr[0].encargados;
+      // Si ya hay turno activo, saltar directamente sin mostrar pantalla de inicio
+      $('turnoBg').style.display='none';
+    }
     ordersArr=await api("orders?status=eq.pending&select=*&order=created_at.asc")||[];
     ordersArr.forEach(o=>seenIds.add(o.id));
     lastPollHash=ordersArr.map(o=>o.id+o.status).join(',');
@@ -397,7 +401,7 @@ $('unlockBtn').onclick=()=>{
 $('soundToggle').onclick=()=>{soundOn=!soundOn;$('soundToggle').textContent=soundOn?'🔊 Sonido: ON':'🔇 Sonido: OFF';$('soundToggle').classList.toggle('off',!soundOn);if(!soundOn){try{speechSynthesis.cancel();}catch(e){}}};
 $('recuentoBtn').onclick=()=>{const p=ordersArr.filter(o=>o.status==='pending').sort((a,b)=>a.created_at-b.created_at);if(!p.length)return;p.forEach(o=>encolarAnuncio(o.art,o.label));};
 $('fullscreenBtn').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});else document.exitFullscreen();};
-$('clearAllBtn').onclick=()=>{if(confirm('¿Vaciar TODA la cola?')){api('orders?status=eq.pending',{method:'DELETE',headers:{'Prefer':''}});ordersArr=[];render();try{speechSynthesis.cancel();}catch(e){}speechChain=Promise.resolve();}};
+$('clearAllBtn').onclick=()=>{if(confirm('¿Vaciar TODA la cola?')){api('orders?status=eq.pending',{method:'DELETE',prefer:'return=minimal'});ordersArr=[];render();try{speechSynthesis.cancel();}catch(e){}speechChain=Promise.resolve();}};
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 init();
