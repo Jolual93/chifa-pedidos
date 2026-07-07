@@ -220,6 +220,28 @@ function wsListen(table, cb){
 
 let panes=[], ordersArr=[], statsObj={}, timeStatsObj={};
 let lastCajaHash='';
+let turnoEncargados = {}; // encargados actuales por estación, sincronizados desde cocina
+
+async function autoResetDiario(){
+  try{
+    const hoy = new Date().toISOString().slice(0,10);
+    const cfgArr = await api("config?key=eq.last_reset_date") || [];
+    const ultimaFecha = cfgArr[0]?.value?.replace(/"/g,'') || '';
+    if(ultimaFecha === hoy) return; // Ya se reinició hoy, nada que hacer
+
+    // Nuevo día — reiniciar contadores
+    const panesArr = await api('panes?select=id') || [];
+    for(const p of panesArr){
+      await api('stats',{method:'POST',body:JSON.stringify({pan_id:p.id,count:0}),prefer:'resolution=merge-duplicates'});
+      await api('time_stats',{method:'POST',body:JSON.stringify({pan_id:p.id,sum_sec:0,count:0,min_sec:null,max_sec:null}),prefer:'resolution=merge-duplicates'});
+    }
+    await api('staff_stats?id=neq.XXXXXX',{method:'DELETE',prefer:'return=minimal'}).catch(()=>{});
+
+    // Guardar la fecha del reset
+    await api('config',{method:'POST',body:JSON.stringify({key:'last_reset_date',value:JSON.stringify(hoy)}),prefer:'resolution=merge-duplicates'});
+    showToast('📅 Nuevo día — estadísticas reiniciadas automáticamente','#2e7d4f');
+  }catch(e){ console.error('autoReset error',e); }
+}
 
 async function pollCaja(){
   try{
@@ -228,21 +250,26 @@ async function pollCaja(){
     const hash=fresh.map(o=>o.id).join(',');
     if(hash===lastCajaHash) return;
     lastCajaHash=hash;
-    // Detectar los que desaparecieron (fueron marcados listos desde cocina)
     const freshIds=new Set(fresh.map(o=>o.id));
-    ordersArr.forEach(o=>{
-      if(!freshIds.has(o.id)) showToast('✅ Listo: '+o.label,'#2e7d4f');
-    });
+    ordersArr.forEach(o=>{ if(!freshIds.has(o.id)) showToast('✅ Listo: '+o.label,'#2e7d4f'); });
     ordersArr=fresh;
     render(); renderCola();
+    // Refrescar encargados del turno en segundo plano
+    api('turno_actual?select=encargados').then(arr=>{ if(arr?.[0]?.encargados) turnoEncargados=arr[0].encargados; }).catch(()=>{});
   }catch(e){}
 }
 
 async function init(){
   try{
+    // Auto-reset si es un nuevo día
+    await autoResetDiario();
+
     let dbPanes = await api('panes?select=*');
     if(!dbPanes || dbPanes.length===0) dbPanes=DEFAULT_PANES;
     panes = dbPanes.sort((a,b)=>(a.col-b.col)||(a.r1-b.r1));
+    // Cargar encargados actuales del turno
+    const turnoArr = await api('turno_actual?select=*') || [];
+    if(turnoArr[0]?.encargados) turnoEncargados = turnoArr[0].encargados;
     ordersArr = await api("orders?status=eq.pending&select=*&order=created_at.asc") || [];
     lastCajaHash=ordersArr.map(o=>o.id).join(',');
     const statsArr = await api('stats?select=*') || [];
@@ -326,19 +353,21 @@ async function enviarPedido(p){
 
 async function marcarListoCaja(order){
   const elapsed=Math.max(0,Math.round((Date.now()-order.created_at)/1000));
-  await api('orders?id=eq.'+order.id,{method:'PATCH',body:JSON.stringify({status:'ready',done_at:Date.now(),marked_by:'caja'})});
+  // Usar el encargado asignado a esa estación en cocina
+  const encargado = turnoEncargados[order.station] || 'Sin asignar';
+  await api('orders?id=eq.'+order.id,{method:'PATCH',body:JSON.stringify({status:'ready',done_at:Date.now(),marked_by:'caja',encargado})});
   const i=ordersArr.findIndex(o=>o.id===order.id);
   if(i>-1) ordersArr.splice(i,1);
   renderCola();render();
   // Stats
   const cur=statsObj[order.pan_id]||0;
-  await api('stats',{method:'POST',body:JSON.stringify({pan_id:order.pan_id,count:cur+1}),headers:{'Prefer':'resolution=merge-duplicates'}});
+  await api('stats',{method:'POST',body:JSON.stringify({pan_id:order.pan_id,count:cur+1}),prefer:'resolution=merge-duplicates'});
   // Time stats
   const ts=timeStatsObj[order.pan_id]||{sum_sec:0,count:0,min_sec:null,max_sec:null};
-  await api('time_stats',{method:'POST',body:JSON.stringify({pan_id:order.pan_id,sum_sec:(ts.sum_sec||0)+elapsed,count:(ts.count||0)+1,min_sec:ts.min_sec==null?elapsed:Math.min(ts.min_sec,elapsed),max_sec:ts.max_sec==null?elapsed:Math.max(ts.max_sec,elapsed)}),headers:{'Prefer':'resolution=merge-duplicates'}});
+  await api('time_stats',{method:'POST',body:JSON.stringify({pan_id:order.pan_id,sum_sec:(ts.sum_sec||0)+elapsed,count:(ts.count||0)+1,min_sec:ts.min_sec==null?elapsed:Math.min(ts.min_sec,elapsed),max_sec:ts.max_sec==null?elapsed:Math.max(ts.max_sec,elapsed)}),prefer:'resolution=merge-duplicates'});
   // History
   const fecha=new Date().toISOString().slice(0,10);
-  await api('history',{method:'POST',body:JSON.stringify({id:'h_'+Date.now(),fecha,label:order.label,pan_id:order.pan_id,station:order.station,encargado:'Caja',elapsed_sec:elapsed,done_at:Date.now()})});
+  await api('history',{method:'POST',body:JSON.stringify({id:'h_'+Date.now(),fecha,label:order.label,pan_id:order.pan_id,station:order.station,encargado,elapsed_sec:elapsed,done_at:Date.now()})});
   showToast('✅ Listo: '+order.label,'#2e7d4f');
 }
 

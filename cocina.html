@@ -23,6 +23,17 @@ h1{font-size:22px;margin:0 0 4px}
 .scount{background:#444;border-radius:14px;padding:2px 10px;font-size:13px}
 .encargado-badge{font-size:11px;background:rgba(255,255,255,.12);border-radius:12px;padding:2px 8px;color:#eee;cursor:pointer}
 .encargado-badge:hover{background:rgba(255,255,255,.22)}
+/* Modal selector de encargado */
+.enc-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:400;display:none;align-items:center;justify-content:center}
+.enc-modal-bg.show{display:flex}
+.enc-modal{background:#1e1e1e;border-radius:14px;padding:20px;width:min(340px,90vw);border:1px solid #444}
+.enc-modal h3{margin:0 0 14px;font-size:16px;color:#eee}
+.enc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.enc-btn{padding:12px 8px;border:2px solid #444;border-radius:10px;background:#252525;color:#eee;
+  font-size:14px;font-weight:600;cursor:pointer;text-align:center;transition:all .15s}
+.enc-btn:hover{border-color:#caa86a;background:#2e2a1a;color:#f0c450}
+.enc-btn.selected{border-color:#2e7d4f;background:#1a2e22;color:#6fcf97}
+.enc-cancel{width:100%;padding:9px;background:#333;color:#bbb;border:none;border-radius:8px;font-size:13px;cursor:pointer;margin-top:4px}
 .queue{display:flex;flex-direction:column;gap:10px}
 .card{position:relative;border-radius:10px;border:4px solid #d8dadc;padding:10px;box-shadow:0 4px 12px rgba(0,0,0,.4);color:#2c2014;margin-bottom:4px}
 .card .pos{position:absolute;top:-12px;left:-12px;width:28px;height:28px;border-radius:50%;background:#222;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border:2px solid #fff}
@@ -72,6 +83,15 @@ h1{font-size:22px;margin:0 0 4px}
   <div class="turno-stations" id="turnoStations"></div>
   <button class="turno-btn" id="turnoIniciarBtn">Iniciar turno</button>
   <a href="admin.html" style="color:#caa86a;font-size:12px;text-decoration:none;margin-top:4px">📊 Ver administración</a>
+</div>
+
+<!-- Modal selector de encargado -->
+<div class="enc-modal-bg" id="encModalBg">
+  <div class="enc-modal">
+    <h3 id="encModalTitle">¿Quién está en Chaufero?</h3>
+    <div class="enc-grid" id="encBtns"></div>
+    <button class="enc-cancel" id="encCancelBtn">Cancelar</button>
+  </div>
 </div>
 <div class="topbar">
   <h1>👨‍🍳 Cocina</h1>
@@ -273,13 +293,39 @@ function buildTurnoOverlay(){
 function actualizarBadges(){
   STATION_LIST.forEach(st=>{const b=$('badge-'+st);if(b)b.textContent=encargadosObj[st]?'👤 '+encargadosObj[st]:'— sin asignar';});
 }
-window.cambiarEncargado=st=>{
-  const nombre=prompt('Encargado de '+STATION_LABELS[st]+':\n\nPersonal:\n'+STAFF.map((n,i)=>(i+1)+'. '+n).join('\n')+'\n\nEscribe el nombre o deja vacío:');
-  if(nombre===null)return;
-  const v=STAFF.find(n=>n.toLowerCase()===nombre.trim().toLowerCase())||'';
-  encargadosObj[st]=v;actualizarBadges();
-  api('turno_actual?id=eq.1',{method:'PATCH',body:JSON.stringify({encargados:encargadosObj})});
+
+let encModalStation = null;
+window.cambiarEncargado = st => {
+  encModalStation = st;
+  $('encModalTitle').textContent = '¿Quién está en ' + STATION_LABELS[st] + '?';
+  const grid = $('encBtns');
+  grid.innerHTML = '';
+  // Botón "Sin asignar"
+  const none = document.createElement('button');
+  none.className = 'enc-btn' + (!encargadosObj[st] ? ' selected' : '');
+  none.textContent = '— Sin asignar —';
+  none.style.gridColumn = '1 / -1';
+  none.onclick = () => guardarEncargado(st, '');
+  grid.appendChild(none);
+  // Botón por cada persona
+  STAFF.forEach(name => {
+    const btn = document.createElement('button');
+    btn.className = 'enc-btn' + (encargadosObj[st] === name ? ' selected' : '');
+    btn.textContent = name;
+    btn.onclick = () => guardarEncargado(st, name);
+    grid.appendChild(btn);
+  });
+  $('encModalBg').classList.add('show');
 };
+
+function guardarEncargado(st, nombre){
+  encargadosObj[st] = nombre;
+  actualizarBadges();
+  $('encModalBg').classList.remove('show');
+  api('turno_actual?id=eq.1',{method:'PATCH',body:JSON.stringify({encargados:encargadosObj}),prefer:'return=minimal'});
+}
+
+$('encCancelBtn').onclick = () => $('encModalBg').classList.remove('show');
 $('turnoIniciarBtn').onclick=()=>{
   STATION_LIST.forEach(st=>{const sel=document.getElementById('turno-sel-'+st);if(sel)encargadosObj[st]=sel.value||'';});
   actualizarBadges();
