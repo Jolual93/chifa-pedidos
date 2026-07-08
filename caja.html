@@ -28,6 +28,13 @@ h1{font-size:20px;margin:0 0 4px}
 .pan .edit{position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;
   background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;
   font-size:11px;cursor:pointer;color:#555}
+.pan.status-agotado{filter:grayscale(.85) brightness(.62);cursor:not-allowed}
+.pan.status-agotado:active{transform:none}
+.pan.status-demora{outline:3px solid #f0c450;outline-offset:-3px}
+.pan .status-badge{position:absolute;top:3px;left:3px;border-radius:999px;padding:2px 6px;
+  font-size:9px;font-weight:800;color:#fff;background:#333;text-transform:uppercase;letter-spacing:.2px;max-width:70%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pan .status-badge.agotado{background:#7a1d1d}
+.pan .status-badge.demora{background:#9b6a12;color:#fff3bd}
 .toast-wrap{position:fixed;top:16px;right:16px;display:flex;flex-direction:column;gap:8px;z-index:60}
 .toast{background:#2e7d4f;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;
   box-shadow:0 4px 14px rgba(0,0,0,.4);animation:tin .25s ease}
@@ -47,6 +54,25 @@ h1{font-size:20px;margin:0 0 4px}
 .btn.save{background:#b53030;color:#fff}
 .top-btns{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .top-btn{background:#333;color:#eee;border:1px solid #555;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer}
+.soup-wrap{margin-top:14px;width:100%;max-width:900px;background:#1e1e1e;border:1px solid #333;border-radius:12px;padding:12px 14px}
+.soup-wrap h3{font-size:14px;color:#bbb;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.soup-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.soup-btn{position:relative;min-height:72px;border:2px solid #4f8b8c;border-radius:10px;background:#203738;color:#fff;
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;padding:10px 46px 10px 12px;
+  cursor:pointer;text-align:left;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.soup-btn strong{font-size:15px}.soup-btn span{font-size:11px;color:#b9dede}
+.soup-btn.status-agotado{filter:grayscale(.8) brightness(.65);border-color:#7a1d1d;cursor:not-allowed}
+.soup-btn.status-demora{border-color:#f0c450}
+.soup-count{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;
+  background:#b53030;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
+.status-modal{width:min(620px,92vw);max-height:86vh;overflow:auto}
+.status-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.status-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;background:#f5f5f5;border-radius:8px}
+.status-name{font-size:13px;font-weight:700;color:#222}.status-sub{font-size:11px;color:#777;margin-top:2px}
+.status-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.status-choice{border:1px solid #ccc;background:#fff;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer;color:#333}
+.status-choice.active{color:#fff;border-color:transparent}.status-choice.ok.active{background:#2e7d4f}
+.status-choice.demora.active{background:#b47b16}.status-choice.agotado.active{background:#7a1d1d}
 .cola-wrap{margin-top:14px;width:100%;max-width:900px}
 .cola-wrap h3{font-size:14px;color:#bbb;margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .cola-list{display:flex;flex-direction:column;gap:8px}
@@ -78,7 +104,7 @@ h1{font-size:20px;margin:0 0 4px}
 .scount{font-size:20px;font-weight:800;color:#b53030;min-width:26px;text-align:center}
 .sbtn{width:20px;height:20px;border-radius:5px;border:1px solid #ddd;background:#f7f7f7;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;color:#555}
 .sbtn:hover{background:#eee}
-@media(max-width:680px){.stats-grid{grid-template-columns:1fr}}
+@media(max-width:680px){.stats-grid{grid-template-columns:1fr}.soup-grid{grid-template-columns:1fr}.status-row{align-items:flex-start;flex-direction:column}.status-actions{justify-content:flex-start}}
 .conn-err{background:#7a1d1d;color:#fff;padding:8px 14px;border-radius:8px;font-size:12px;margin-bottom:10px;display:none}
 .conn-err.show{display:block}
 </style>
@@ -90,11 +116,16 @@ h1{font-size:20px;margin:0 0 4px}
 <div class="top-btns">
   <button class="top-btn" id="fullscreenBtn">⛶ Pantalla completa</button>
   <button class="top-btn" id="statsBtn">📊 Estadísticas</button>
+  <button class="top-btn" id="statusBtn">⚠️ Estados</button>
   <a href="admin.html" class="top-btn" style="text-decoration:none">📋 Admin</a>
 </div>
 <div class="frame">
   <div class="bar"></div>
   <div class="grid" id="grid"></div>
+</div>
+<div class="soup-wrap">
+  <h3>🍲 Sopas <span id="soupBadge" style="background:#b53030;color:#fff;border-radius:12px;padding:2px 8px;font-size:12px">0</span></h3>
+  <div class="soup-grid" id="soupGrid"></div>
 </div>
 <div class="cola-wrap">
   <h3>⏳ En cocina <span id="pendBadge" style="background:#b53030;color:#fff;border-radius:12px;padding:2px 8px;font-size:12px">0</span></h3>
@@ -113,6 +144,17 @@ h1{font-size:20px;margin:0 0 4px}
     <div class="modal-actions" style="justify-content:space-between;margin-top:14px">
       <button class="btn cancel" id="resetAllStatsBtn" style="background:#fde2e2;color:#a33">Reiniciar todo a 0</button>
       <button class="btn save" id="closeStatsBtn">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="statusModalBg">
+  <div class="modal status-modal">
+    <h3 style="margin:0 0 4px;font-size:16px">Estados de productos</h3>
+    <p style="font-size:12px;color:#666;margin:0">Agotado bloquea el pedido. Va a demorar solo avisa, pero permite vender.</p>
+    <div class="status-list" id="statusList"></div>
+    <div class="modal-actions">
+      <button class="btn save" id="closeStatusBtn">Cerrar</button>
     </div>
   </div>
 </div>
@@ -162,6 +204,11 @@ const DEFAULT_PANES = [
 ];
 const STATION_META = {chaufero:{label:'🍚 Chaufero',cls:'chaufero'},frituras:{label:'🍤 Frituras',cls:'frituras'},saltado:{label:'🥘 Saltado',cls:'saltado'}};
 const STATION_ORDER = ['chaufero','frituras','saltado'];
+const SOUP_PANES = [
+  {id:'sopa_pequena',label:'Sopa pequeña',color:'#bfe7df',station:'saltado',art:'una'},
+  {id:'sopa_litro',label:'Sopa 1 litro',color:'#93d0c6',station:'saltado',art:'una'}
+];
+const STATUS_LABELS = {demora:'Va a demorar',agotado:'Agotado'};
 const $ = id => document.getElementById(id);
 
 async function api(path, opts={}){
@@ -218,7 +265,7 @@ function wsListen(table, cb){
   connect();
 }
 
-let panes=[], ordersArr=[], statsObj={}, timeStatsObj={};
+let panes=[], ordersArr=[], statsObj={}, timeStatsObj={}, productStatusObj={};
 let lastCajaHash='';
 let turnoEncargados = {}; // encargados actuales por estación, sincronizados desde cocina
 
@@ -267,6 +314,7 @@ async function init(){
     let dbPanes = await api('panes?select=*');
     if(!dbPanes || dbPanes.length===0) dbPanes=DEFAULT_PANES;
     panes = dbPanes.sort((a,b)=>(a.col-b.col)||(a.r1-b.r1));
+    await loadProductStatus();
     // Cargar encargados actuales del turno
     const turnoArr = await api('turno_actual?select=*') || [];
     if(turnoArr[0]?.encargados) turnoEncargados = turnoArr[0].encargados;
@@ -281,6 +329,7 @@ async function init(){
 
   // Polling cada 2 segundos — mecanismo principal
   setInterval(pollCaja, 2000);
+  setInterval(refreshProductStatus, 5000);
 
   // WebSocket como bono para velocidad extra
   try{
@@ -301,6 +350,51 @@ async function reloadTimeStats(){
   if($('statsModalBg').classList.contains('show')) renderStats();
 }
 
+function parseConfigValue(value,fallback){
+  if(value==null)return fallback;
+  if(typeof value==='string'){
+    try{return JSON.parse(value)||fallback;}catch(e){return fallback;}
+  }
+  return typeof value==='object'?value:fallback;
+}
+async function loadProductStatus(){
+  const cfg=(await api("config?key=eq.product_status")||[])[0];
+  productStatusObj=parseConfigValue(cfg?.value,{});
+}
+async function refreshProductStatus(){
+  try{
+    const before=JSON.stringify(productStatusObj);
+    await loadProductStatus();
+    if(JSON.stringify(productStatusObj)!==before){render();renderCola();if($('statusModalBg').classList.contains('show'))renderStatusManager();}
+  }catch(e){}
+}
+async function saveProductStatus(){
+  await api('config',{method:'POST',body:JSON.stringify({key:'product_status',value:JSON.stringify(productStatusObj)}),prefer:'resolution=merge-duplicates'});
+}
+function getProductStatus(id){return productStatusObj[id]||'';}
+function setLocalProductStatus(id,status){if(status)productStatusObj[id]=status;else delete productStatusObj[id];}
+async function setProductStatus(id,status){
+  setLocalProductStatus(id,status);
+  await saveProductStatus();
+  render();renderCola();renderStatusManager();
+}
+function allProductsForStatus(){return [...panes.map(p=>({id:p.id,label:p.label,station:p.station||'saltado'})),...SOUP_PANES.map(p=>({id:p.id,label:p.label,station:p.station,isSoup:true}))];}
+function renderStatusManager(){
+  const list=$('statusList');list.innerHTML='';
+  const stNames={chaufero:'Chaufero',frituras:'Frituras',saltado:'Saltado'};
+  allProductsForStatus().forEach(p=>{
+    const status=getProductStatus(p.id);
+    const row=document.createElement('div');row.className='status-row';
+    const info=document.createElement('div');
+    info.innerHTML='<div class="status-name">'+p.label+'</div><div class="status-sub">'+(p.isSoup?'Sopas':(stNames[p.station]||'Cocina'))+'</div>';
+    const actions=document.createElement('div');actions.className='status-actions';
+    [['','OK','ok'],['demora','Demora','demora'],['agotado','Agotado','agotado']].forEach(([val,label,cls])=>{
+      const b=document.createElement('button');b.className='status-choice '+cls+(status===val?' active':'');b.textContent=label;b.onclick=()=>setProductStatus(p.id,val);actions.appendChild(b);
+    });
+    row.appendChild(info);row.appendChild(actions);list.appendChild(row);
+  });
+}
+
 function render(){
   const grid=$('grid');
   grid.innerHTML='';
@@ -308,18 +402,25 @@ function render(){
   panes.forEach(p=>{
     const div=document.createElement('div');
     const isEmpty=pendingIds.has(p.id);
-    div.className='pan'+(isEmpty?' empty':'');
+    const status=getProductStatus(p.id);
+    div.className='pan'+(isEmpty?' empty':'')+(status?' status-'+status:'');
     div.style.background=p.color;
     if(p.col) div.style.gridColumn=p.col+'/'+(p.col+1);
     if(p.r1&&p.r2) div.style.gridRow=p.r1+'/'+(p.r2+1);
     div.textContent=p.label;
-    div.onclick=isEmpty?()=>showToast('"'+p.label+'" ya está en cocina','#b53030'):()=>enviarPedido(p);
+    div.onclick=()=>{
+      if(status==='agotado'){showToast('"'+p.label+'" está agotado','#7a1d1d');return;}
+      if(isEmpty){showToast('"'+p.label+'" ya está en cocina','#b53030');return;}
+      enviarPedido(p);
+    };
+    if(status){const badge=document.createElement('div');badge.className='status-badge '+status;badge.textContent=status==='agotado'?'Agotado':'Demora';div.appendChild(badge);}
     const edit=document.createElement('div');
     edit.className='edit';edit.textContent='✎';
     edit.onclick=e=>{e.stopPropagation();openEdit(p);};
     div.appendChild(edit);
     grid.appendChild(div);
   });
+  renderSopas();
 }
 
 function renderCola(){
@@ -330,11 +431,13 @@ function renderCola(){
   const stNames={chaufero:'🍚 Chaufero',frituras:'🍤 Frituras',saltado:'🥘 Saltado'};
   pending.forEach((o,idx)=>{
     const mins=Math.max(0,Math.round((Date.now()-o.created_at)/60000));
+    const status=getProductStatus(o.pan_id);
     const card=document.createElement('div');
     card.className='cola-card '+(o.station||'');
     const pos=document.createElement('div');pos.className='c-pos';pos.textContent=idx+1;
     const info=document.createElement('div');info.className='c-info';
-    info.innerHTML=`<div class="c-name">${o.label}</div><div class="c-meta">${stNames[o.station]||'Cocina'} · ${mins===0?'recién':'hace '+mins+' min'}</div>`;
+    const statusText=status?(' · '+STATUS_LABELS[status]):'';
+    info.innerHTML='<div class="c-name">'+o.label+'</div><div class="c-meta">'+(stNames[o.station]||'Cocina')+' · '+(mins===0?'recién':'hace '+mins+' min')+statusText+'</div>';
     const btn=document.createElement('button');btn.className='btn-listo';btn.textContent='✓ Listo';
     btn.onclick=()=>marcarListoCaja(o);
     card.appendChild(pos);card.appendChild(info);card.appendChild(btn);
@@ -342,9 +445,39 @@ function renderCola(){
   });
 }
 
+function renderSopas(){
+  const grid=$('soupGrid');if(!grid)return;
+  grid.innerHTML='';
+  let total=0;
+  SOUP_PANES.forEach(p=>{
+    const count=ordersArr.filter(o=>o.status==='pending'&&o.pan_id===p.id).length;
+    total+=count;
+    const status=getProductStatus(p.id);
+    const btn=document.createElement('button');
+    btn.className='soup-btn'+(status?' status-'+status:'');
+    const statusText=status==='agotado'?'Agotado':status==='demora'?'Va a demorar':'Clic por cada sopa';
+    btn.innerHTML='<strong>'+p.label+'</strong><span>'+statusText+'</span><div class="soup-count">'+count+'</div>';
+    btn.onclick=()=>{
+      if(status==='agotado'){showToast('"'+p.label+'" está agotada','#7a1d1d');return;}
+      enviarSopa(p);
+    };
+    grid.appendChild(btn);
+  });
+  $('soupBadge').textContent=total;
+}
+
 async function enviarPedido(p){
+  return crearPedido(p,{allowDuplicate:false});
+}
+async function enviarSopa(p){
+  return crearPedido(p,{allowDuplicate:true});
+}
+async function crearPedido(p,{allowDuplicate=false}={}){
+  const status=getProductStatus(p.id);
+  if(status==='agotado'){showToast('"'+p.label+'" está agotado','#7a1d1d');return;}
   const ya=ordersArr.some(o=>o.pan_id===p.id&&o.status==='pending');
-  if(ya){showToast('"'+p.label+'" ya está en cola','#b53030');return;}
+  if(ya&&!allowDuplicate){showToast('"'+p.label+'" ya está en cola','#b53030');return;}
+  if(status==='demora')showToast('Aviso: "'+p.label+'" va a demorar','#b47b16');
   const order={id:'o_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),pan_id:p.id,label:p.label,color:p.color,station:p.station,art:p.art||'un',status:'pending',created_at:Date.now()};
   await api('orders',{method:'POST',body:JSON.stringify(order)});
   ordersArr.push(order);render();renderCola();
@@ -416,6 +549,8 @@ function renderStats(){
 }
 $('statsBtn').onclick=()=>{renderStats();$('statsModalBg').classList.add('show');};
 $('closeStatsBtn').onclick=()=>$('statsModalBg').classList.remove('show');
+$('statusBtn').onclick=()=>{renderStatusManager();$('statusModalBg').classList.add('show');};
+$('closeStatusBtn').onclick=()=>$('statusModalBg').classList.remove('show');
 $('resetAllStatsBtn').onclick=async()=>{
   if(!confirm('¿Reiniciar todos los contadores y tiempos a 0?'))return;
   await api('stats',{method:'DELETE',headers:{'Prefer':''}});

@@ -40,16 +40,31 @@ h1{font-size:22px;margin:0 0 4px}
 .card .name{font-size:16px;font-weight:700;text-align:center;margin-top:8px}
 .card .time{font-size:11px;color:#5a4a35;margin-top:4px;text-align:center}
 .card button{margin-top:8px;width:100%;padding:8px;border:none;border-radius:6px;background:#2e7d4f;color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+.card.status-demora{border-color:#f0c450;box-shadow:0 0 0 3px rgba(240,196,80,.25),0 4px 12px rgba(0,0,0,.4)}
+.card.status-agotado{border-color:#7a1d1d;filter:grayscale(.35)}
+.card .status-pill{display:inline-flex;align-self:center;margin:6px auto 0;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:800;color:#fff;background:#9b6a12;text-transform:uppercase}
+.card .status-pill.agotado{background:#7a1d1d}
 .new-blink{animation:blink .9s ease-in-out infinite}
 @keyframes blink{0%,100%{box-shadow:0 0 0 0 rgba(255,210,80,.9)}50%{box-shadow:0 0 0 10px rgba(255,210,80,0)}}
 .empty{color:#777;font-size:14px;margin-top:10px}
 .voice-panel{background:#1a1a1a;border:1px solid #444;border-radius:10px;padding:10px 14px;margin-bottom:14px;display:none;width:100%;max-width:1300px;font-size:13px}
 .voice-panel.show{display:block}
 .voice-panel label{display:block;margin:8px 0 3px;color:#bbb}
-.voice-panel select,.voice-panel input[type=range]{width:100%}
+.voice-panel select,.voice-panel input[type=range],.voice-panel input[type=password],.voice-panel input[type=text]{width:100%}
+.voice-panel input[type=password],.voice-panel input[type=text]{background:#252525;color:#fff;border:1px solid #555;border-radius:6px;padding:7px 9px;font-size:13px}
 .voice-row{display:flex;gap:16px;flex-wrap:wrap}
 .voice-row>div{flex:1;min-width:160px}
 .voice-panel button{margin-top:10px;background:#2e7d4f;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:13px;cursor:pointer}
+.voice-msg{display:inline-block;margin-left:8px;color:#aaa;font-size:12px}
+.status-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:410;display:none;align-items:center;justify-content:center}
+.status-modal-bg.show{display:flex}
+.status-modal{background:#1e1e1e;border-radius:14px;padding:18px;width:min(620px,92vw);max-height:86vh;overflow:auto;border:1px solid #444;color:#eee}
+.status-modal h3{margin:0 0 4px;font-size:16px}.status-modal p{font-size:12px;color:#aaa;margin:0 0 12px}
+.status-list{display:flex;flex-direction:column;gap:8px}.status-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;background:#252525;border-radius:8px}
+.status-name{font-size:13px;font-weight:700}.status-sub{font-size:11px;color:#999;margin-top:2px}.status-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.status-choice{border:1px solid #555;background:#1b1b1b;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer;color:#ddd}
+.status-choice.active{color:#fff;border-color:transparent}.status-choice.ok.active{background:#2e7d4f}.status-choice.demora.active{background:#b47b16}.status-choice.agotado.active{background:#7a1d1d}
+.status-close{margin-top:14px;width:100%;padding:9px;background:#333;color:#ddd;border:none;border-radius:8px;cursor:pointer}
 .turno-bg{position:fixed;inset:0;background:#0d0d0d;z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px}
 .turno-bg h2{color:#fff;font-size:20px;margin:0}
 .turno-bg p{color:#aaa;font-size:13px;margin:0;text-align:center}
@@ -93,6 +108,14 @@ h1{font-size:22px;margin:0 0 4px}
     <button class="enc-cancel" id="encCancelBtn">Cancelar</button>
   </div>
 </div>
+<div class="status-modal-bg" id="statusModalBg">
+  <div class="status-modal">
+    <h3>Estados de productos</h3>
+    <p>Agotado bloquea en caja. Va a demorar avisa, pero permite vender.</p>
+    <div class="status-list" id="statusList"></div>
+    <button class="status-close" id="closeStatusBtn">Cerrar</button>
+  </div>
+</div>
 <div class="topbar">
   <h1>👨‍🍳 Cocina</h1>
   <span class="count-badge" id="countBadge">0</span>
@@ -100,11 +123,23 @@ h1{font-size:22px;margin:0 0 4px}
   <span class="sound-toggle" id="recuentoBtn" style="border-color:#caa86a;color:#ffe1a3">🔁 Recuento</span>
   <button class="popup-btn" id="notifBtn">🪟 Popup: ON</button>
   <span class="sound-toggle" id="voiceBtn">🎙️ Voz</span>
+  <span class="sound-toggle" id="statusBtn">⚠️ Estados</span>
   <span class="sound-toggle" id="fullscreenBtn">⛶ Pantalla completa</span>
   <span class="sound-toggle" id="clearAllBtn" style="border-color:#b5342f;color:#ff9b8a">🗑 Vaciar cola</span>
 </div>
 <div class="voice-panel" id="voicePanel">
-  <label>Elegir voz</label>
+  <div class="voice-row">
+    <div><label>Motor de voz</label><select id="voiceEngine"><option value="eleven">ElevenLabs</option><option value="browser">Navegador / Windows</option></select></div>
+    <div><label>API key ElevenLabs</label><input type="password" id="elevenKey" placeholder="Pega tu API key"></div>
+  </div>
+  <div class="voice-row">
+    <div><label>Voz ElevenLabs</label><select id="elevenVoiceSelect"><option value="">Carga tus voces</option></select></div>
+    <div><label>Modelo</label><select id="elevenModel"><option value="eleven_multilingual_v2">Calidad</option><option value="eleven_flash_v2_5">Rápida</option></select></div>
+  </div>
+  <label>Voice ID manual</label>
+  <input type="text" id="elevenVoiceManual" placeholder="Pega aquí el Voice ID si tu key no puede cargar voces">
+  <button id="loadElevenVoicesBtn">Cargar voces</button><span class="voice-msg" id="voiceMsg"></span>
+  <label>Voz del navegador</label>
   <select id="voiceSelect"></select>
   <div class="voice-row">
     <div><label>Velocidad: <span id="rateVal">1.0</span></label><input type="range" id="rateRange" min="0.6" max="1.4" step="0.05" value="1"></div>
@@ -139,11 +174,25 @@ const SB_URL='https://vjmnbzjtvuwqowxvknlu.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqbW5iemp0dnV3cW93eHZrbmx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMjg5OTYsImV4cCI6MjA5ODcwNDk5Nn0.Z3TNYCnOytTwNyWnCfSj5NtgyxHdPfB0_Rz9jv6Bdro';
 const STATION_LABELS={chaufero:'🍚 Chaufero',frituras:'🍤 Frituras',saltado:'🥘 Saltado'};
 const STATION_LIST=['chaufero','frituras','saltado'];
+const DEFAULT_PRODUCTS=[
+  {id:'p1',label:'Arroz chaufa',station:'chaufero'},{id:'p2',label:'Tequeños',station:'frituras'},
+  {id:'p3',label:'Taypá',station:'saltado'},{id:'p4',label:'Fideos',station:'chaufero'},
+  {id:'p5',label:'Salteado',station:'saltado'},{id:'p6',label:'Tipakay',station:'saltado'},
+  {id:'p7',label:'Chjaukay',station:'saltado'},{id:'p8',label:'Plátano',station:'frituras'},
+  {id:'p9',label:'Filete',station:'frituras'},{id:'p10',label:'Mandarin',station:'saltado'},
+  {id:'p11',label:'Honey',station:'saltado'},{id:'p12',label:'Huevo',station:'frituras'},
+  {id:'p13',label:'Chicharron',station:'frituras'},{id:'p14',label:'Papas',station:'frituras'},
+  {id:'p15',label:'Alitas',station:'frituras'},{id:'p16',label:'Wantanes',station:'frituras'},
+  {id:'p17',label:'Tamarindo',station:'saltado'}
+];
+const SOUP_PRODUCTS=[{id:'sopa_pequena',label:'Sopa pequeña',station:'saltado',isSoup:true},{id:'sopa_litro',label:'Sopa 1 litro',station:'saltado',isSoup:true}];
+const STATUS_LABELS={demora:'Va a demorar',agotado:'Agotado'};
 let STAFF=['Eloy','Jefferson','Benjamin','Victor','Jeremy'];
 const $=id=>document.getElementById(id);
 
 let ordersArr=[], seenIds=new Set(), firstLoad=true;
 let soundOn=true, encargadosObj={}, wakeLock=null;
+let productStatusObj={}, productosArr=[];
 let voiceRate=parseFloat(localStorage.getItem('voiceRate_v1'))||1.0;
 let voicePitch=parseFloat(localStorage.getItem('voicePitch_v1'))||1.2;
 let allVoices=[],spanishVoice=null;
@@ -203,6 +252,42 @@ function wsListen(table,cb){
 }
 
 // ---- Voz ----
+let voiceEngine=localStorage.getItem('voiceEngine_v2')||'eleven';
+let elevenKey=localStorage.getItem('elevenApiKey_v1')||'';
+let elevenVoiceId=localStorage.getItem('elevenVoiceId_v1')||'';
+let elevenModel=localStorage.getItem('elevenModel_v1')||'eleven_multilingual_v2';
+let elevenVoices=[], currentAudio=null, currentAudioResolve=null;
+
+function setVoiceMsg(text,color){const m=$('voiceMsg');if(!m)return;m.textContent=text||'';m.style.color=color||'#aaa';}
+function syncVoiceControls(){
+  $('voiceEngine').value=voiceEngine;$('elevenKey').value=elevenKey;$('elevenModel').value=elevenModel;
+  $('elevenVoiceManual').value=elevenVoiceId;
+  $('rateRange').value=voiceRate;$('rateVal').textContent=voiceRate.toFixed(2);
+  $('pitchRange').value=voicePitch;$('pitchVal').textContent=voicePitch.toFixed(2);
+  renderElevenVoiceSelect();
+}
+function renderElevenVoiceSelect(){
+  const sel=$('elevenVoiceSelect');if(!sel)return;sel.innerHTML='';
+  if(!elevenVoices.length){const o=document.createElement('option');o.value=elevenVoiceId;o.textContent=elevenVoiceId?'Voz guardada':'Carga tus voces';sel.appendChild(o);return;}
+  elevenVoices.forEach(v=>{const o=document.createElement('option');o.value=v.voice_id;o.textContent=v.name||v.voice_id;if(v.voice_id===elevenVoiceId)o.selected=true;sel.appendChild(o);});
+}
+async function loadElevenVoices(){
+  elevenKey=$('elevenKey').value.trim();localStorage.setItem('elevenApiKey_v1',elevenKey);
+  if(!elevenKey){setVoiceMsg('Falta API key','#f08d75');return;}
+  setVoiceMsg('Cargando voces...');
+  try{
+    const res=await fetch('https://api.elevenlabs.io/v2/voices',{headers:{'xi-api-key':elevenKey}});
+    const data=await res.json();
+    if(!res.ok)throw new Error(data?.detail?.message||data?.detail||'No se pudo cargar voces');
+    elevenVoices=data.voices||[];
+    if(!elevenVoiceId&&elevenVoices[0]){elevenVoiceId=elevenVoices[0].voice_id;localStorage.setItem('elevenVoiceId_v1',elevenVoiceId);}
+    renderElevenVoiceSelect();$('elevenVoiceManual').value=elevenVoiceId;setVoiceMsg(elevenVoices.length+' voces cargadas','#6fcf97');
+  }catch(e){
+    const msg=String(e.message||e);
+    if(msg.includes('voices_read'))setVoiceMsg('Esta key no tiene voices_read. Crea otra key con ese permiso o pega un Voice ID manual.','#f0c450');
+    else setVoiceMsg('Error ElevenLabs: '+msg,'#f08d75');
+  }
+}
 function pickVoice(){
   const voices=speechSynthesis.getVoices();
   allVoices=voices.filter(v=>v.lang&&v.lang.toLowerCase().startsWith('es'));
@@ -217,10 +302,15 @@ if('speechSynthesis' in window) speechSynthesis.onvoiceschanged=pickVoice;
 function populateVoiceSelect(){
   const sel=$('voiceSelect');sel.innerHTML='';
   allVoices.forEach(v=>{const o=document.createElement('option');o.value=v.name;o.textContent=v.name+' ('+v.lang+')';if(spanishVoice&&v.name===spanishVoice.name)o.selected=true;sel.appendChild(o);});
-  $('rateRange').value=voiceRate;$('rateVal').textContent=voiceRate.toFixed(2);
-  $('pitchRange').value=voicePitch;$('pitchVal').textContent=voicePitch.toFixed(2);
+  syncVoiceControls();
 }
 $('voiceBtn').onclick=()=>$('voicePanel').classList.toggle('show');
+$('voiceEngine').onchange=e=>{voiceEngine=e.target.value;localStorage.setItem('voiceEngine_v2',voiceEngine);};
+$('elevenKey').onchange=e=>{elevenKey=e.target.value.trim();localStorage.setItem('elevenApiKey_v1',elevenKey);};
+$('elevenVoiceSelect').onchange=e=>{elevenVoiceId=e.target.value;localStorage.setItem('elevenVoiceId_v1',elevenVoiceId);$('elevenVoiceManual').value=elevenVoiceId;};
+$('elevenVoiceManual').onchange=e=>{elevenVoiceId=e.target.value.trim();localStorage.setItem('elevenVoiceId_v1',elevenVoiceId);renderElevenVoiceSelect();setVoiceMsg(elevenVoiceId?'Voice ID guardado':'Voice ID vacío',elevenVoiceId?'#6fcf97':'#f0c450');};
+$('elevenModel').onchange=e=>{elevenModel=e.target.value;localStorage.setItem('elevenModel_v1',elevenModel);};
+$('loadElevenVoicesBtn').onclick=loadElevenVoices;
 $('voiceSelect').onchange=e=>{spanishVoice=allVoices.find(v=>v.name===e.target.value)||null;if(spanishVoice)localStorage.setItem('voiceName_v1',spanishVoice.name);};
 $('rateRange').oninput=e=>{voiceRate=parseFloat(e.target.value);$('rateVal').textContent=voiceRate.toFixed(2);localStorage.setItem('voiceRate_v1',voiceRate);};
 $('pitchRange').oninput=e=>{voicePitch=parseFloat(e.target.value);$('pitchVal').textContent=voicePitch.toFixed(2);localStorage.setItem('voicePitch_v1',voicePitch);};
@@ -233,7 +323,7 @@ const FRASES=[
 ];
 function fraseAleatoria(art,label){return FRASES[Math.floor(Math.random()*FRASES.length)](art||'un',label);}
 
-function speakOne(text,onDone,pOverride,rOverride){
+function speakBrowser(text,onDone,pOverride,rOverride){
   try{
     const u=new SpeechSynthesisUtterance(text);
     if(spanishVoice)u.voice=spanishVoice;
@@ -245,7 +335,28 @@ function speakOne(text,onDone,pOverride,rOverride){
     speechSynthesis.speak(u);
   }catch(e){onDone&&onDone();}
 }
-$('testVoiceBtn').onclick=()=>{try{speechSynthesis.cancel();}catch(e){}speakOne(fraseAleatoria('un','Chaufa'));};
+async function speakEleven(text,onDone){
+  try{
+    if(!elevenKey||!elevenVoiceId)throw new Error('Falta API key o voz');
+    const res=await fetch('https://api.elevenlabs.io/v1/text-to-speech/'+encodeURIComponent(elevenVoiceId)+'?output_format=mp3_44100_128',{
+      method:'POST',
+      headers:{'xi-api-key':elevenKey,'Content-Type':'application/json'},
+      body:JSON.stringify({text,model_id:elevenModel,voice_settings:{stability:.45,similarity_boost:.8,style:.15,use_speaker_boost:true,speed:Math.max(.7,Math.min(1.2,voiceRate))}})
+    });
+    if(!res.ok)throw new Error(await res.text());
+    const blob=await res.blob();
+    const url=URL.createObjectURL(blob);
+    const audio=new Audio(url);currentAudio=audio;
+    let finished=false;
+    const done=()=>{if(finished)return;finished=true;URL.revokeObjectURL(url);if(currentAudio===audio)currentAudio=null;currentAudioResolve=null;onDone&&onDone();};
+    currentAudioResolve=done;audio.onended=done;audio.onerror=done;
+    await audio.play();
+  }catch(e){setVoiceMsg('Uso voz del navegador: '+e.message.slice(0,70),'#f0c450');speakBrowser(text,onDone);}
+}
+function speakOne(text,onDone,pOverride,rOverride){
+  if(voiceEngine==='eleven')speakEleven(text,onDone);else speakBrowser(text,onDone,pOverride,rOverride);
+}
+$('testVoiceBtn').onclick=()=>{try{speechSynthesis.cancel();}catch(e){}if(currentAudio){currentAudio.pause();currentAudio=null;}speakOne(fraseAleatoria('un','Chaufa'));};
 
 function encolarAnuncio(art,label){
   speechChain=speechChain.then(()=>new Promise(resolve=>{
@@ -255,6 +366,8 @@ function encolarAnuncio(art,label){
     speakOne(fraseAleatoria(art,label),resolve,jp,jr);
   }));
 }
+
+syncVoiceControls();
 
 // ---- Popup flotante ----
 function notificar(label,station){popupQueue.push({label,station});mostrarPopup();}
@@ -334,6 +447,57 @@ $('turnoIniciarBtn').onclick=()=>{
   $('turnoBg').style.display='none';
 };
 
+// ---- Estados de productos ----
+function parseConfigValue(value,fallback){
+  if(value==null)return fallback;
+  if(typeof value==='string'){
+    try{return JSON.parse(value)||fallback;}catch(e){return fallback;}
+  }
+  return typeof value==='object'?value:fallback;
+}
+async function loadProducts(){
+  try{
+    const arr=await api('panes?select=id,label,station')||[];
+    productosArr=(arr.length?arr:DEFAULT_PRODUCTS).map(p=>({id:p.id,label:p.label,station:p.station||'saltado'}));
+  }catch(e){productosArr=[...DEFAULT_PRODUCTS];}
+  productosArr=[...productosArr,...SOUP_PRODUCTS];
+}
+async function loadProductStatus(){
+  const cfg=(await api("config?key=eq.product_status")||[])[0];
+  productStatusObj=parseConfigValue(cfg?.value,{});
+}
+async function refreshProductStatus(){
+  try{
+    const before=JSON.stringify(productStatusObj);
+    await loadProductStatus();
+    if(JSON.stringify(productStatusObj)!==before){render();if($('statusModalBg').classList.contains('show'))renderStatusManager();}
+  }catch(e){}
+}
+async function saveProductStatus(){
+  await api('config',{method:'POST',body:JSON.stringify({key:'product_status',value:JSON.stringify(productStatusObj)}),prefer:'resolution=merge-duplicates'});
+}
+function getProductStatus(id){return productStatusObj[id]||'';}
+async function setProductStatus(id,status){
+  if(status)productStatusObj[id]=status;else delete productStatusObj[id];
+  await saveProductStatus();render();renderStatusManager();
+}
+function renderStatusManager(){
+  const list=$('statusList');list.innerHTML='';
+  productosArr.forEach(p=>{
+    const status=getProductStatus(p.id);
+    const row=document.createElement('div');row.className='status-row';
+    const info=document.createElement('div');
+    info.innerHTML='<div class="status-name">'+p.label+'</div><div class="status-sub">'+(p.isSoup?'Sopas':(STATION_LABELS[p.station]||'Cocina'))+'</div>';
+    const actions=document.createElement('div');actions.className='status-actions';
+    [['','OK','ok'],['demora','Demora','demora'],['agotado','Agotado','agotado']].forEach(([val,label,cls])=>{
+      const b=document.createElement('button');b.className='status-choice '+cls+(status===val?' active':'');b.textContent=label;b.onclick=()=>setProductStatus(p.id,val);actions.appendChild(b);
+    });
+    row.appendChild(info);row.appendChild(actions);list.appendChild(row);
+  });
+}
+$('statusBtn').onclick=()=>{renderStatusManager();$('statusModalBg').classList.add('show');};
+$('closeStatusBtn').onclick=()=>$('statusModalBg').classList.remove('show');
+
 // ---- Render ----
 function render(){
   const pending=ordersArr.filter(o=>o.status==='pending').sort((a,b)=>a.created_at-b.created_at);
@@ -346,14 +510,17 @@ function render(){
     $('empty-'+st).style.display=ords.length?'none':'block';
     ords.forEach((o,idx)=>{
       const isNew=!seenIds.has(o.id);
-      const card=document.createElement('div');card.className='card'+(isNew?' new-blink':'');card.style.background=o.color;
+      const pst=getProductStatus(o.pan_id);
+      const card=document.createElement('div');card.className='card'+(isNew?' new-blink':'')+(pst?' status-'+pst:'');card.style.background=o.color;
       const pos=document.createElement('div');pos.className='pos';pos.textContent=idx+1;
       const name=document.createElement('div');name.className='name';name.textContent=o.label;
       const time=document.createElement('div');time.className='time';
       const mins=Math.max(0,Math.round((Date.now()-o.created_at)/60000));
       time.textContent=mins===0?'recién':'hace '+mins+' min';
       const btn=document.createElement('button');btn.textContent='✓ Listo';btn.onclick=()=>marcarListo(o);
-      card.appendChild(pos);card.appendChild(name);card.appendChild(time);card.appendChild(btn);
+      card.appendChild(pos);card.appendChild(name);
+      if(pst){const pill=document.createElement('div');pill.className='status-pill '+pst;pill.textContent=STATUS_LABELS[pst];card.appendChild(pill);}
+      card.appendChild(time);card.appendChild(btn);
       queue.appendChild(card);
       if(isNew)seenIds.add(o.id);
     });
@@ -414,7 +581,9 @@ async function pollOrders(){
 async function init(){
   try{
     const cfgArr=await api("config?key=eq.staff_list")||[];
-    if(cfgArr[0]?.value) STAFF=cfgArr[0].value;
+    if(cfgArr[0]?.value) STAFF=parseConfigValue(cfgArr[0].value,STAFF);
+    await loadProducts();
+    await loadProductStatus();
     const turnoArr=await api('turno_actual?select=*')||[];
     if(turnoArr[0]?.encargados){
       encargadosObj=turnoArr[0].encargados;
@@ -430,6 +599,7 @@ async function init(){
 
   // Polling cada 2 segundos — mecanismo principal
   setInterval(pollOrders, 2000);
+  setInterval(refreshProductStatus, 5000);
 
   // WebSocket como bono para velocidad extra
   try{
@@ -444,10 +614,10 @@ $('unlockBtn').onclick=()=>{
   try{if('wakeLock' in navigator)navigator.wakeLock.request('screen').then(wl=>{wakeLock=wl;}).catch(()=>{});}catch(e){}
 };
 
-$('soundToggle').onclick=()=>{soundOn=!soundOn;$('soundToggle').textContent=soundOn?'🔊 Sonido: ON':'🔇 Sonido: OFF';$('soundToggle').classList.toggle('off',!soundOn);if(!soundOn){try{speechSynthesis.cancel();}catch(e){}}};
+$('soundToggle').onclick=()=>{soundOn=!soundOn;$('soundToggle').textContent=soundOn?'🔊 Sonido: ON':'🔇 Sonido: OFF';$('soundToggle').classList.toggle('off',!soundOn);if(!soundOn){try{speechSynthesis.cancel();}catch(e){}if(currentAudio){currentAudio.pause();if(currentAudioResolve)currentAudioResolve();currentAudio=null;}}};
 $('recuentoBtn').onclick=()=>{const p=ordersArr.filter(o=>o.status==='pending').sort((a,b)=>a.created_at-b.created_at);if(!p.length)return;p.forEach(o=>encolarAnuncio(o.art,o.label));};
 $('fullscreenBtn').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});else document.exitFullscreen();};
-$('clearAllBtn').onclick=()=>{if(confirm('¿Vaciar TODA la cola?')){api('orders?status=eq.pending',{method:'DELETE',prefer:'return=minimal'});ordersArr=[];render();try{speechSynthesis.cancel();}catch(e){}speechChain=Promise.resolve();}};
+$('clearAllBtn').onclick=()=>{if(confirm('¿Vaciar TODA la cola?')){api('orders?status=eq.pending',{method:'DELETE',prefer:'return=minimal'});ordersArr=[];render();try{speechSynthesis.cancel();}catch(e){}if(currentAudio){currentAudio.pause();if(currentAudioResolve)currentAudioResolve();currentAudio=null;}speechChain=Promise.resolve();}};
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 init();
