@@ -607,11 +607,49 @@ async function init(){
   }catch(e){}
 }
 
+// ---- MediaSession + audio silencioso para background en Android ----
+let silentAudio = null;
+
+function iniciarAudioBackground(){
+  try{
+    // Crear un AudioContext con un oscilador silencioso en loop
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if(!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    gain.gain.value = 0.001; // casi inaudible
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    // Registrar MediaSession para que el sistema piense que hay música
+    if('mediaSession' in navigator){
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: 'Cocina — Pedidos activos',
+        artist: 'Chifa',
+        album: 'Sistema de Pedidos'
+      });
+      navigator.mediaSession.setActionHandler('play', ()=>{});
+      navigator.mediaSession.setActionHandler('pause', ()=>{});
+      navigator.mediaSession.playbackState = 'playing';
+    }
+    // También crear un audio HTML silencioso como respaldo (más compatible con Android)
+    const audio = document.createElement('audio');
+    audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+    audio.loop = true;
+    audio.volume = 0.001;
+    audio.play().catch(()=>{});
+    silentAudio = audio;
+  }catch(e){}
+}
+
 $('unlockBtn').onclick=()=>{
   $('unlockBg').style.display='none';
   try{const A=window.AudioContext||window.webkitAudioContext;if(A){const c=new A();c.resume();}}catch(e){}
   try{if(window.speechSynthesis){const u=new SpeechSynthesisUtterance('Listo');u.lang='es';u.volume=0.01;speechSynthesis.speak(u);}}catch(e){}
   try{if('wakeLock' in navigator)navigator.wakeLock.request('screen').then(wl=>{wakeLock=wl;}).catch(()=>{});}catch(e){}
+  // Iniciar audio de background para mantener el contexto vivo en Android
+  iniciarAudioBackground();
 };
 
 $('soundToggle').onclick=()=>{soundOn=!soundOn;$('soundToggle').textContent=soundOn?'🔊 Sonido: ON':'🔇 Sonido: OFF';$('soundToggle').classList.toggle('off',!soundOn);if(!soundOn){try{speechSynthesis.cancel();}catch(e){}if(currentAudio){currentAudio.pause();if(currentAudioResolve)currentAudioResolve();currentAudio=null;}}};
