@@ -495,7 +495,7 @@ function renderStatusManager(){
     row.appendChild(info);row.appendChild(actions);list.appendChild(row);
   });
 }
-$('statusBtn').onclick=()=>{renderStatusManager();$('statusModalBg').classList.add('show');};
+$('statusBtn').onclick=()=>{refreshProductStatus().finally(()=>{renderStatusManager();$('statusModalBg').classList.add('show');});};
 $('closeStatusBtn').onclick=()=>$('statusModalBg').classList.remove('show');
 
 // ---- Render ----
@@ -599,11 +599,12 @@ async function init(){
 
   // Polling cada 2 segundos — mecanismo principal
   setInterval(pollOrders, 2000);
-  setInterval(refreshProductStatus, 5000);
 
-  // WebSocket como bono para velocidad extra
+  // WebSocket como bono para velocidad extra. Los estados ya no se refrescan cada 5s,
+  // porque en algunos navegadores de PC eso congelaba la pantalla.
   try{
     wsListen('orders', ()=>{ setTimeout(pollOrders, 300); });
+    wsListen('config', ()=>{ setTimeout(refreshProductStatus, 300); });
   }catch(e){}
 }
 
