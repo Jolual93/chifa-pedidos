@@ -607,22 +607,32 @@ async function init(){
   }catch(e){}
 }
 
-// ---- MediaSession + audio silencioso para background en Android ----
+// ---- MediaSession + audio silencioso solo para Android ----
 let silentAudio = null;
+let silentAudioCtx = null;
+let silentOsc = null;
+
+function esAndroid(){
+  return /Android/i.test(navigator.userAgent || '');
+}
 
 function iniciarAudioBackground(){
+  // Este truco mantiene vivo el audio cuando Android bloquea pantalla.
+  // En PC no se necesita y puede congelar algunos navegadores, por eso queda limitado a Android.
+  if(!esAndroid()) return;
+  if(silentAudio || silentAudioCtx) return;
   try{
-    // Crear un AudioContext con un oscilador silencioso en loop
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if(!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    gain.gain.value = 0.001; // casi inaudible
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    // Registrar MediaSession para que el sistema piense que hay música
+    if(AudioCtx){
+      silentAudioCtx = new AudioCtx();
+      const osc = silentAudioCtx.createOscillator();
+      const gain = silentAudioCtx.createGain();
+      gain.gain.value = 0.001;
+      osc.connect(gain);
+      gain.connect(silentAudioCtx.destination);
+      osc.start();
+      silentOsc = osc;
+    }
     if('mediaSession' in navigator){
       navigator.mediaSession.metadata = new MediaMetadata({
         title: 'Cocina — Pedidos activos',
@@ -633,7 +643,6 @@ function iniciarAudioBackground(){
       navigator.mediaSession.setActionHandler('pause', ()=>{});
       navigator.mediaSession.playbackState = 'playing';
     }
-    // También crear un audio HTML silencioso como respaldo (más compatible con Android)
     const audio = document.createElement('audio');
     audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
     audio.loop = true;
