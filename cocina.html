@@ -318,50 +318,73 @@ $('pitchRange').oninput=e=>{voicePitch=parseFloat(e.target.value);$('pitchVal').
 
 const FRASES={
   nuevo:[
-    (art,l)=>'Sale '+art+' '+l+'. Vamos con eso.',
-    (art,l)=>'Nuevo pedido: '+art+' '+l+'. En marcha.',
-    (art,l)=>'Cocina, entra '+art+' '+l+'.',
-    (art,l)=>'Atentos, tenemos '+art+' '+l+'.',
-    (art,l)=>'Vamos avanzando con '+art+' '+l+'.',
-    (art,l)=>'Pedido en cola: '+art+' '+l+'.',
-    (art,l)=>'Equipo, sale '+art+' '+l+'.',
-    (art,l)=>'Mesa pide '+art+' '+l+'. A trabajar.'
+    'Sale {art} {plato}. Al toque, muchachos, con ritmo.',
+    'Entra comanda: {art} {plato}. Fuego con eso.',
+    'Cantando, equipo: {art} {plato}. En marcha.',
+    'Mesa esperando {art} {plato}. Vamos armandolo.',
+    'Nuevo pedido, sale {art} {plato}. Manos a la obra.',
+    'Atentos en linea, entra {art} {plato}.',
+    'Vamos marcando {art} {plato}. Cero errores y buena letra.',
+    'Pedido en cola: {art} {plato}. Lo quiero perfecto y rapido.'
   ],
   min5:[
-    (art,l)=>'Cinco minutos con '+art+' '+l+'. Vamos dandole salida.',
-    (art,l)=>'Ojo con '+art+' '+l+', ya lleva cinco minutos.',
-    (art,l)=>'Cocina, revisen '+art+' '+l+'. No lo dejemos avanzar mas.',
-    (art,l)=>'Tenemos pendiente '+art+' '+l+'. Vamos cerrandolo.',
-    (art,l)=>'Atencion con '+art+' '+l+', ya esta esperando.',
-    (art,l)=>'Ese '+l+' necesita moverse ya.',
-    (art,l)=>'Vamos equipo, '+art+' '+l+' sigue en cola.',
-    (art,l)=>'No perdamos de vista '+art+' '+l+'.'
+    'Muchachos, van cinco minutos con {art} {plato}. ¿En que estamos?',
+    'Ojo con {art} {plato}, no lo dejen enfriar en la mente. Muevanse.',
+    'Cocina, revisen {art} {plato}. No quiero retrasos con esta mesa.',
+    'Ese {plato} necesita salir ya. Metele punche.',
+    'Atencion aqui, {art} {plato} ya tiene cinco. Vamos cerrandolo.',
+    'Aceleren con {art} {plato}, no se me duerman en la linea.',
+    'Vamos, equipo, {art} {plato} sigue colgado. ¿Falta mucho?',
+    'Ponganse las pilas con {art} {plato}, ya toca sacarlo.'
   ],
   min10:[
-    (art,l)=>'Diez minutos con '+art+' '+l+'. Prioridad ahora.',
-    (art,l)=>'Cocina, '+art+' '+l+' ya esta tarde. Saquenlo primero.',
-    (art,l)=>'Atencion fuerte: '+art+' '+l+' lleva diez minutos.',
-    (art,l)=>'Ese '+l+' ya no puede seguir esperando.',
-    (art,l)=>'Prioridad para '+art+' '+l+'. Vamos con urgencia.',
-    (art,l)=>'Equipo, necesito salida para '+art+' '+l+'.',
-    (art,l)=>'Diez minutos. '+art+' '+l+' tiene que avanzar ya.',
-    (art,l)=>'Cocina, enfoquen '+art+' '+l+'. Es prioridad.'
+    '¡Diez minutos con {art} {plato}! Ponganse las pilas de una vez, esto es prioridad.',
+    '¡Cocina, me estan durmiendo {art} {plato}! ¡Saquenlo primero, ya!',
+    '¿Alguien me explica por que {art} {plato} sigue esperando? Movimiento, señores.',
+    '¡Ese {plato} ya esta rojo en la pantalla! No puede seguir ahi.',
+    '¡Dejen de dar vueltas y saquenme {art} {plato}! Lo quiero en la ventana.',
+    'Equipo, necesito {art} {plato} para ayer. ¡Aprieten, aprieten!',
+    '¡Diez minutos es un abuso! {art} {plato} tiene que salir en este instante.',
+    '¡Despierten en la linea! Enfoquen {art} {plato}, no quiero ni una excusa.'
   ],
   min15:[
-    (art,l)=>'Quince minutos con '+art+' '+l+'. Urgente, salida ya.',
-    (art,l)=>'Cocina, '+art+' '+l+' esta demasiado atrasado.',
-    (art,l)=>'Atencion maxima: '+art+' '+l+' lleva quince minutos.',
-    (art,l)=>'Ese '+l+' ya esta critico. Necesito salida.',
-    (art,l)=>'Prioridad absoluta para '+art+' '+l+'.',
-    (art,l)=>'Equipo, detengan lo secundario y saquen '+art+' '+l+'.',
-    (art,l)=>'Quince minutos. '+art+' '+l+' no puede esperar mas.',
-    (art,l)=>'Cocina, respuesta inmediata para '+art+' '+l+'.'
+    '¡Quince minutos por {art} {plato}! ¿Estan bromeando conmigo? ¡A la ventana AHORA!',
+    '¡Ese {plato} ya es una falta de respeto al cliente! ¡Paren todo y saquenlo!',
+    '¡Quince minutos, caramba! Si {art} {plato} no sale en 30 segundos, entro yo mismo.',
+    '¡Estan volando, señores! {art} {plato} esta en critico, ¡solucion inmediata!',
+    '¡Prioridad absoluta para {art} {plato}! El resto espera. ¡Quiero ese plato ya!',
+    '¡Que desastre, quince minutos! Dejen lo secundario y emplaten {art} {plato} de una maldita vez.',
+    '¡Ya no hay paciencia que aguante! {art} {plato} a la mesa AHORA, no lo repito.',
+    '¡Cocina, reaccionen! ¿Que parte de urgente no se entiende? ¡{art} {plato} afuera YA!'
   ]
 };
 const ALERTAS_TIEMPO=[{min:5,key:'min5'},{min:10,key:'min10'},{min:15,key:'min15'}];
-function fraseAleatoria(art,label,nivel='nuevo'){
+function plantillaVoz(tpl,art,label){
+  return tpl.replaceAll('{art}',art||'un').replaceAll('{plato}',label);
+}
+function responsableDeEstacion(station){
+  const nombre=(encargadosObj[station]||'').trim();
+  return nombre&&nombre.toLowerCase()!=='sin asignar'?nombre:'';
+}
+function prepararFraseParaResponsable(frase){
+  return frase
+    .replace(/^¡Cocina,s*/i,'¡')
+    .replace(/^Cocina,s*/i,'')
+    .replace(/^Equipo,s*/i,'')
+    .replace(/^Vamos,s*equipo,s*/i,'')
+    .replace(/^Muchachos,s*/i,'')
+    .replace(/^Atentos en linea,s*/i,'')
+    .replace(/^Atencion aqui,s*/i,'')
+    .replace(/^Cantando,s*equipo:s*/i,'');
+}
+function fraseAleatoria(art,label,nivel='nuevo',station=''){
   const banco=FRASES[nivel]||FRASES.nuevo;
-  return banco[Math.floor(Math.random()*banco.length)](art||'un',label);
+  const tpl=banco[Math.floor(Math.random()*banco.length)];
+  let frase=plantillaVoz(tpl,art,label);
+  const responsable=responsableDeEstacion(station);
+  if(!responsable)return frase;
+  frase=prepararFraseParaResponsable(frase);
+  return responsable+', '+frase.charAt(0).toLowerCase()+frase.slice(1);
 }
 
 function speakBrowser(text,onDone,pOverride,rOverride){
@@ -397,14 +420,14 @@ async function speakEleven(text,onDone){
 function speakOne(text,onDone,pOverride,rOverride){
   if(voiceEngine==='eleven')speakEleven(text,onDone);else speakBrowser(text,onDone,pOverride,rOverride);
 }
-$('testVoiceBtn').onclick=()=>{try{speechSynthesis.cancel();}catch(e){}if(currentAudio){currentAudio.pause();currentAudio=null;}speakOne(fraseAleatoria('un','Chaufa','nuevo'));};
+$('testVoiceBtn').onclick=()=>{try{speechSynthesis.cancel();}catch(e){}if(currentAudio){currentAudio.pause();currentAudio=null;}speakOne(fraseAleatoria('un','Chaufa','nuevo','saltado'));};
 
-function encolarAnuncio(art,label,nivel='nuevo'){
+function encolarAnuncio(art,label,nivel='nuevo',station=''){
   speechChain=speechChain.then(()=>new Promise(resolve=>{
     if(!soundOn){resolve();return;}
     const jp=Math.max(.5,Math.min(2,voicePitch+(Math.random()*.3-.15)));
     const jr=Math.max(.6,Math.min(1.4,voiceRate+(Math.random()*.16-.08)));
-    speakOne(fraseAleatoria(art,label,nivel),resolve,jp,jr);
+    speakOne(fraseAleatoria(art,label,nivel,station),resolve,jp,jr);
   }));
 }
 
@@ -432,7 +455,7 @@ function revisarAvisosPorTiempo(){
     if(actual>anterior){
       orderAlertLevels[o.id]=actual;
       const alerta=ALERTAS_TIEMPO.find(a=>a.min===actual);
-      if(alerta)encolarAnuncio(o.art||'un',o.label,alerta.key);
+      if(alerta)encolarAnuncio(o.art||'un',o.label,alerta.key,o.station);
     }
   });
   limpiarAvisosPedidos();
@@ -639,7 +662,7 @@ async function pollOrders(){
       fresh.forEach(o=>{
         if(!seenIds.has(o.id)){
           orderAlertLevels[o.id]=0;
-          encolarAnuncio(o.art||'un', o.label, 'nuevo');
+          encolarAnuncio(o.art||'un', o.label, 'nuevo', o.station);
           notificar(o.label, o.station);
         }
       });
@@ -739,7 +762,7 @@ $('unlockBtn').onclick=()=>{
 };
 
 $('soundToggle').onclick=()=>{soundOn=!soundOn;$('soundToggle').textContent=soundOn?'🔊 Sonido: ON':'🔇 Sonido: OFF';$('soundToggle').classList.toggle('off',!soundOn);if(!soundOn){try{speechSynthesis.cancel();}catch(e){}if(currentAudio){currentAudio.pause();if(currentAudioResolve)currentAudioResolve();currentAudio=null;}}};
-$('recuentoBtn').onclick=()=>{const p=ordersArr.filter(o=>o.status==='pending').sort((a,b)=>orderCreatedMs(a)-orderCreatedMs(b));if(!p.length)return;p.forEach(o=>encolarAnuncio(o.art,o.label,'nuevo'));};
+$('recuentoBtn').onclick=()=>{const p=ordersArr.filter(o=>o.status==='pending').sort((a,b)=>orderCreatedMs(a)-orderCreatedMs(b));if(!p.length)return;p.forEach(o=>encolarAnuncio(o.art,o.label,'nuevo',o.station));};
 $('fullscreenBtn').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});else document.exitFullscreen();};
 $('clearAllBtn').onclick=()=>{if(confirm('¿Vaciar TODA la cola?')){api('orders?status=eq.pending',{method:'DELETE',prefer:'return=minimal'});ordersArr=[];render();try{speechSynthesis.cancel();}catch(e){}if(currentAudio){currentAudio.pause();if(currentAudioResolve)currentAudioResolve();currentAudio=null;}speechChain=Promise.resolve();}};
 
