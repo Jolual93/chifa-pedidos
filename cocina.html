@@ -191,6 +191,7 @@ let STAFF=['Eloy','Jefferson','Benjamin','Victor','Jeremy'];
 const $=id=>document.getElementById(id);
 
 let ordersArr=[], seenIds=new Set(), firstLoad=true;
+let orderAlertLevels={};
 let soundOn=true, encargadosObj={}, wakeLock=null;
 let productStatusObj={}, productosArr=[];
 let voiceRate=parseFloat(localStorage.getItem('voiceRate_v1'))||1.0;
@@ -315,13 +316,53 @@ $('voiceSelect').onchange=e=>{spanishVoice=allVoices.find(v=>v.name===e.target.v
 $('rateRange').oninput=e=>{voiceRate=parseFloat(e.target.value);$('rateVal').textContent=voiceRate.toFixed(2);localStorage.setItem('voiceRate_v1',voiceRate);};
 $('pitchRange').oninput=e=>{voicePitch=parseFloat(e.target.value);$('pitchVal').textContent=voicePitch.toFixed(2);localStorage.setItem('voicePitch_v1',voicePitch);};
 
-const FRASES=[
-  (art,l)=>art.charAt(0).toUpperCase()+art.slice(1)+' '+l+', por favor.',
-  (art,l)=>'Pedido nuevo: '+art+' '+l+'.',
-  (art,l)=>'Cocina, atento a '+art+' '+l+'.',
-  (art,l)=>'¡Vamos! '+art+' '+l+', cuando puedan.'
-];
-function fraseAleatoria(art,label){return FRASES[Math.floor(Math.random()*FRASES.length)](art||'un',label);}
+const FRASES={
+  nuevo:[
+    (art,l)=>'Sale '+art+' '+l+'. Vamos con eso.',
+    (art,l)=>'Nuevo pedido: '+art+' '+l+'. En marcha.',
+    (art,l)=>'Cocina, entra '+art+' '+l+'.',
+    (art,l)=>'Atentos, tenemos '+art+' '+l+'.',
+    (art,l)=>'Vamos avanzando con '+art+' '+l+'.',
+    (art,l)=>'Pedido en cola: '+art+' '+l+'.',
+    (art,l)=>'Equipo, sale '+art+' '+l+'.',
+    (art,l)=>'Mesa pide '+art+' '+l+'. A trabajar.'
+  ],
+  min5:[
+    (art,l)=>'Cinco minutos con '+art+' '+l+'. Vamos dandole salida.',
+    (art,l)=>'Ojo con '+art+' '+l+', ya lleva cinco minutos.',
+    (art,l)=>'Cocina, revisen '+art+' '+l+'. No lo dejemos avanzar mas.',
+    (art,l)=>'Tenemos pendiente '+art+' '+l+'. Vamos cerrandolo.',
+    (art,l)=>'Atencion con '+art+' '+l+', ya esta esperando.',
+    (art,l)=>'Ese '+l+' necesita moverse ya.',
+    (art,l)=>'Vamos equipo, '+art+' '+l+' sigue en cola.',
+    (art,l)=>'No perdamos de vista '+art+' '+l+'.'
+  ],
+  min10:[
+    (art,l)=>'Diez minutos con '+art+' '+l+'. Prioridad ahora.',
+    (art,l)=>'Cocina, '+art+' '+l+' ya esta tarde. Saquenlo primero.',
+    (art,l)=>'Atencion fuerte: '+art+' '+l+' lleva diez minutos.',
+    (art,l)=>'Ese '+l+' ya no puede seguir esperando.',
+    (art,l)=>'Prioridad para '+art+' '+l+'. Vamos con urgencia.',
+    (art,l)=>'Equipo, necesito salida para '+art+' '+l+'.',
+    (art,l)=>'Diez minutos. '+art+' '+l+' tiene que avanzar ya.',
+    (art,l)=>'Cocina, enfoquen '+art+' '+l+'. Es prioridad.'
+  ],
+  min15:[
+    (art,l)=>'Quince minutos con '+art+' '+l+'. Urgente, salida ya.',
+    (art,l)=>'Cocina, '+art+' '+l+' esta demasiado atrasado.',
+    (art,l)=>'Atencion maxima: '+art+' '+l+' lleva quince minutos.',
+    (art,l)=>'Ese '+l+' ya esta critico. Necesito salida.',
+    (art,l)=>'Prioridad absoluta para '+art+' '+l+'.',
+    (art,l)=>'Equipo, detengan lo secundario y saquen '+art+' '+l+'.',
+    (art,l)=>'Quince minutos. '+art+' '+l+' no puede esperar mas.',
+    (art,l)=>'Cocina, respuesta inmediata para '+art+' '+l+'.'
+  ]
+};
+const ALERTAS_TIEMPO=[{min:5,key:'min5'},{min:10,key:'min10'},{min:15,key:'min15'}];
+function fraseAleatoria(art,label,nivel='nuevo'){
+  const banco=FRASES[nivel]||FRASES.nuevo;
+  return banco[Math.floor(Math.random()*banco.length)](art||'un',label);
+}
 
 function speakBrowser(text,onDone,pOverride,rOverride){
   try{
@@ -356,15 +397,45 @@ async function speakEleven(text,onDone){
 function speakOne(text,onDone,pOverride,rOverride){
   if(voiceEngine==='eleven')speakEleven(text,onDone);else speakBrowser(text,onDone,pOverride,rOverride);
 }
-$('testVoiceBtn').onclick=()=>{try{speechSynthesis.cancel();}catch(e){}if(currentAudio){currentAudio.pause();currentAudio=null;}speakOne(fraseAleatoria('un','Chaufa'));};
+$('testVoiceBtn').onclick=()=>{try{speechSynthesis.cancel();}catch(e){}if(currentAudio){currentAudio.pause();currentAudio=null;}speakOne(fraseAleatoria('un','Chaufa','nuevo'));};
 
-function encolarAnuncio(art,label){
+function encolarAnuncio(art,label,nivel='nuevo'){
   speechChain=speechChain.then(()=>new Promise(resolve=>{
     if(!soundOn){resolve();return;}
     const jp=Math.max(.5,Math.min(2,voicePitch+(Math.random()*.3-.15)));
     const jr=Math.max(.6,Math.min(1.4,voiceRate+(Math.random()*.16-.08)));
-    speakOne(fraseAleatoria(art,label),resolve,jp,jr);
+    speakOne(fraseAleatoria(art,label,nivel),resolve,jp,jr);
   }));
+}
+
+function orderCreatedMs(order){
+  const n=Number(order.created_at);
+  if(Number.isFinite(n))return n;
+  const d=new Date(order.created_at).getTime();
+  return Number.isFinite(d)?d:Date.now();
+}
+function nivelActualPedido(order){
+  const minutos=(Date.now()-orderCreatedMs(order))/60000;
+  let nivel=0;
+  ALERTAS_TIEMPO.forEach(a=>{if(minutos>=a.min)nivel=a.min;});
+  return nivel;
+}
+function limpiarAvisosPedidos(){
+  const ids=new Set(ordersArr.filter(o=>o.status==='pending').map(o=>o.id));
+  Object.keys(orderAlertLevels).forEach(id=>{if(!ids.has(id))delete orderAlertLevels[id];});
+}
+function revisarAvisosPorTiempo(){
+  if(!soundOn)return;
+  ordersArr.filter(o=>o.status==='pending').sort((a,b)=>orderCreatedMs(a)-orderCreatedMs(b)).forEach(o=>{
+    const anterior=orderAlertLevels[o.id]||0;
+    const actual=nivelActualPedido(o);
+    if(actual>anterior){
+      orderAlertLevels[o.id]=actual;
+      const alerta=ALERTAS_TIEMPO.find(a=>a.min===actual);
+      if(alerta)encolarAnuncio(o.art||'un',o.label,alerta.key);
+    }
+  });
+  limpiarAvisosPedidos();
 }
 
 syncVoiceControls();
@@ -567,13 +638,16 @@ async function pollOrders(){
     if(!firstLoad){
       fresh.forEach(o=>{
         if(!seenIds.has(o.id)){
-          encolarAnuncio(o.art||'un', o.label);
+          orderAlertLevels[o.id]=0;
+          encolarAnuncio(o.art||'un', o.label, 'nuevo');
           notificar(o.label, o.station);
         }
       });
     }
     fresh.forEach(o=>seenIds.add(o.id));
     ordersArr=fresh;
+    limpiarAvisosPedidos();
+    revisarAvisosPorTiempo();
     render();
   }catch(e){}
 }
@@ -591,7 +665,7 @@ async function init(){
       $('turnoBg').style.display='none';
     }
     ordersArr=await api("orders?status=eq.pending&select=*&order=created_at.asc")||[];
-    ordersArr.forEach(o=>seenIds.add(o.id));
+    ordersArr.forEach(o=>{seenIds.add(o.id);orderAlertLevels[o.id]=nivelActualPedido(o);});
     lastPollHash=ordersArr.map(o=>o.id+o.status).join(',');
     buildTurnoOverlay(); actualizarBadges(); render();
     firstLoad=false;
@@ -599,6 +673,8 @@ async function init(){
 
   // Polling cada 2 segundos — mecanismo principal
   setInterval(pollOrders, 2000);
+  // Recordatorios de jefe de cocina: una sola vez a los 5, 10 y 15 minutos.
+  setInterval(revisarAvisosPorTiempo, 30000);
 
   // WebSocket como bono para velocidad extra. Los estados ya no se refrescan cada 5s,
   // porque en algunos navegadores de PC eso congelaba la pantalla.
@@ -663,7 +739,7 @@ $('unlockBtn').onclick=()=>{
 };
 
 $('soundToggle').onclick=()=>{soundOn=!soundOn;$('soundToggle').textContent=soundOn?'🔊 Sonido: ON':'🔇 Sonido: OFF';$('soundToggle').classList.toggle('off',!soundOn);if(!soundOn){try{speechSynthesis.cancel();}catch(e){}if(currentAudio){currentAudio.pause();if(currentAudioResolve)currentAudioResolve();currentAudio=null;}}};
-$('recuentoBtn').onclick=()=>{const p=ordersArr.filter(o=>o.status==='pending').sort((a,b)=>a.created_at-b.created_at);if(!p.length)return;p.forEach(o=>encolarAnuncio(o.art,o.label));};
+$('recuentoBtn').onclick=()=>{const p=ordersArr.filter(o=>o.status==='pending').sort((a,b)=>orderCreatedMs(a)-orderCreatedMs(b));if(!p.length)return;p.forEach(o=>encolarAnuncio(o.art,o.label,'nuevo'));};
 $('fullscreenBtn').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});else document.exitFullscreen();};
 $('clearAllBtn').onclick=()=>{if(confirm('¿Vaciar TODA la cola?')){api('orders?status=eq.pending',{method:'DELETE',prefer:'return=minimal'});ordersArr=[];render();try{speechSynthesis.cancel();}catch(e){}if(currentAudio){currentAudio.pause();if(currentAudioResolve)currentAudioResolve();currentAudio=null;}speechChain=Promise.resolve();}};
 
