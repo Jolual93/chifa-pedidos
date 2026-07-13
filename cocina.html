@@ -60,6 +60,9 @@ h1{font-size:22px;margin:0 0 4px}
 .voice-row>div{flex:1;min-width:160px}
 .voice-panel button{margin-top:10px;background:#2e7d4f;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:13px;cursor:pointer}
 .voice-msg{display:inline-block;margin-left:8px;color:#aaa;font-size:12px}
+.voice-advanced{margin-top:10px;border-top:1px solid #333;padding-top:8px}
+.voice-advanced summary{color:#888;font-size:12px;cursor:pointer;user-select:none}
+.voice-advanced[open] summary{color:#bbb}
 .status-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:410;display:none;align-items:center;justify-content:center}
 .status-modal-bg.show{display:flex}
 .status-modal{background:#1e1e1e;border-radius:14px;padding:18px;width:min(620px,92vw);max-height:86vh;overflow:auto;border:1px solid #444;color:#eee}
@@ -140,9 +143,12 @@ h1{font-size:22px;margin:0 0 4px}
     <div><label>Voz ElevenLabs</label><select id="elevenVoiceSelect"><option value="">Carga tus voces</option></select></div>
     <div><label>Modelo</label><select id="elevenModel"><option value="eleven_multilingual_v2">Calidad</option><option value="eleven_flash_v2_5">Rápida</option></select></div>
   </div>
-  <label>Voice ID manual</label>
-  <input type="text" id="elevenVoiceManual" placeholder="Pega aquí el Voice ID si tu key no puede cargar voces">
   <button id="loadElevenVoicesBtn">Cargar voces</button><span class="voice-msg" id="voiceMsg"></span>
+  <details class="voice-advanced">
+    <summary>Avanzado</summary>
+    <label>Código interno de voz (solo respaldo)</label>
+    <input type="text" id="elevenVoiceManual" placeholder="Voice ID">
+  </details>
   <label>Voz del navegador</label>
   <select id="voiceSelect"></select>
   <div class="voice-row">
@@ -288,19 +294,28 @@ function renderElevenVoiceSelect(){
 }
 async function loadElevenVoices(){
   elevenKey=$('elevenKey').value.trim();localStorage.setItem('elevenApiKey_v1',elevenKey);
-  if(!elevenKey){setVoiceMsg('Falta API key','#f08d75');return;}
+  if(!elevenKey){setVoiceMsg('Falta la API key','#f08d75');return false;}
   setVoiceMsg('Cargando voces...');
   try{
     const res=await fetch('https://api.elevenlabs.io/v2/voices',{headers:{'xi-api-key':elevenKey}});
     const data=await res.json();
     if(!res.ok)throw new Error(data?.detail?.message||data?.detail||'No se pudo cargar voces');
     elevenVoices=data.voices||[];
-    if(!elevenVoiceId&&elevenVoices[0]){elevenVoiceId=elevenVoices[0].voice_id;localStorage.setItem('elevenVoiceId_v1',elevenVoiceId);}
-    renderElevenVoiceSelect();$('elevenVoiceManual').value=elevenVoiceId;setVoiceMsg(elevenVoices.length+' voces cargadas','#6fcf97');
+    const currentIsValid=elevenVoices.some(v=>v.voice_id===elevenVoiceId);
+    if(!currentIsValid&&elevenVoices[0]){
+      elevenVoiceId=elevenVoices[0].voice_id;
+      localStorage.setItem('elevenVoiceId_v1',elevenVoiceId);
+    }
+    renderElevenVoiceSelect();
+    $('elevenVoiceManual').value=elevenVoiceId;
+    const selected=elevenVoices.find(v=>v.voice_id===elevenVoiceId);
+    setVoiceMsg(selected?'Voz lista: '+(selected.name||'ElevenLabs'):'No se encontraron voces',selected?'#6fcf97':'#f0c450');
+    return !!selected;
   }catch(e){
     const msg=String(e.message||e);
-    if(msg.includes('voices_read'))setVoiceMsg('Esta key no tiene voices_read. Crea otra key con ese permiso o pega un Voice ID manual.','#f0c450');
+    if(msg.includes('voices_read'))setVoiceMsg('La API key no tiene permiso para leer voces.','#f0c450');
     else setVoiceMsg('Error ElevenLabs: '+msg,'#f08d75');
+    return false;
   }
 }
 function pickVoice(){
@@ -320,7 +335,7 @@ function populateVoiceSelect(){
   syncVoiceControls();
 }
 $('voiceBtn').onclick=()=>$('voicePanel').classList.toggle('show');
-$('voiceEngine').onchange=e=>{voiceEngine=e.target.value;localStorage.setItem('voiceEngine_v2',voiceEngine);};
+$('voiceEngine').onchange=e=>{voiceEngine=e.target.value;localStorage.setItem('voiceEngine_v2',voiceEngine);if(voiceEngine==='eleven'&&elevenKey)loadElevenVoices();};
 $('elevenKey').onchange=e=>{elevenKey=e.target.value.trim();localStorage.setItem('elevenApiKey_v1',elevenKey);};
 $('elevenVoiceSelect').onchange=e=>{elevenVoiceId=e.target.value;localStorage.setItem('elevenVoiceId_v1',elevenVoiceId);$('elevenVoiceManual').value=elevenVoiceId;};
 $('elevenVoiceManual').onchange=e=>{elevenVoiceId=e.target.value.trim();localStorage.setItem('elevenVoiceId_v1',elevenVoiceId);renderElevenVoiceSelect();setVoiceMsg(elevenVoiceId?'Voice ID guardado':'Voice ID vacío',elevenVoiceId?'#6fcf97':'#f0c450');};
@@ -414,7 +429,20 @@ function speakBrowser(text,onDone,pOverride,rOverride){
     speechSynthesis.speak(u);
   }catch(e){onDone&&onDone();}
 }
-async function speakEleven(text,onDone){
+async function readElevenError(res){
+  const raw=await res.text();
+  try{
+    const data=JSON.parse(raw);
+    const detail=data?.detail||data||{};
+    const code=detail?.code||data?.code||'';
+    if(code==='voice_not_found')return {code,message:'La voz guardada ya no existe en ElevenLabs.'};
+    if(code==='invalid_api_key')return {code,message:'La API key de ElevenLabs no es válida.'};
+    if(code==='quota_exceeded')return {code,message:'Se agotó el saldo disponible de ElevenLabs.'};
+    return {code,message:detail?.message||data?.message||'ElevenLabs rechazó la solicitud.'};
+  }catch(e){return {code:'',message:'ElevenLabs rechazó la solicitud.'};}
+}
+
+async function speakEleven(text,onDone,allowVoiceRetry=true){
   try{
     if(!elevenKey||!elevenVoiceId)throw new Error('Falta API key o voz');
     const res=await fetch('https://api.elevenlabs.io/v1/text-to-speech/'+encodeURIComponent(elevenVoiceId)+'?output_format=mp3_44100_128',{
@@ -422,7 +450,15 @@ async function speakEleven(text,onDone){
       headers:{'xi-api-key':elevenKey,'Content-Type':'application/json'},
       body:JSON.stringify({text,model_id:elevenModel,voice_settings:{stability:.45,similarity_boost:.8,style:.15,use_speaker_boost:true,speed:Math.max(.7,Math.min(1.2,voiceRate))}})
     });
-    if(!res.ok)throw new Error(await res.text());
+    if(!res.ok){
+      const error=await readElevenError(res);
+      if(error.code==='voice_not_found'&&allowVoiceRetry){
+        const previousId=elevenVoiceId;
+        const recovered=await loadElevenVoices();
+        if(recovered&&elevenVoiceId&&elevenVoiceId!==previousId)return speakEleven(text,onDone,false);
+      }
+      throw new Error(error.message);
+    }
     const blob=await res.blob();
     const url=URL.createObjectURL(blob);
     const audio=new Audio(url);currentAudio=audio;
@@ -430,7 +466,7 @@ async function speakEleven(text,onDone){
     const done=()=>{if(finished)return;finished=true;URL.revokeObjectURL(url);if(currentAudio===audio)currentAudio=null;currentAudioResolve=null;onDone&&onDone();};
     currentAudioResolve=done;audio.onended=done;audio.onerror=done;
     await audio.play();
-  }catch(e){setVoiceMsg('Uso voz del navegador: '+e.message.slice(0,70),'#f0c450');speakBrowser(text,onDone);}
+  }catch(e){setVoiceMsg((e.message||'ElevenLabs no respondió')+' Se usó la voz del navegador.','#f0c450');speakBrowser(text,onDone);}
 }
 function speakOne(text,onDone,pOverride,rOverride){
   if(voiceEngine==='eleven')speakEleven(text,onDone);else speakBrowser(text,onDone,pOverride,rOverride);
@@ -477,6 +513,7 @@ function revisarAvisosPorTiempo(){
 }
 
 syncVoiceControls();
+if(elevenKey&&voiceEngine==='eleven')loadElevenVoices();
 
 // ---- Popup flotante ----
 function notificar(label,station){popupQueue.push({label,station});mostrarPopup();}
