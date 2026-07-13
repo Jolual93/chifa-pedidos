@@ -208,7 +208,13 @@ let ordersArr=[], seenIds=new Set(), firstLoad=true;
 let orderAlertLevels={};
 const savedSoundOn=localStorage.getItem('soundOn_v1');
 const mobileVoiceDefault=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'');
-let soundOn=savedSoundOn==null?mobileVoiceDefault:savedSoundOn==='true';
+const voiceDeviceAllowed=mobileVoiceDefault;
+let soundOn=voiceDeviceAllowed&&savedSoundOn!=='false';
+if(!voiceDeviceAllowed)localStorage.setItem('soundOn_v1','false');
+const VOICE_TAB_LEASE_KEY='chifa_voice_tab_lease_v1';
+const VOICE_TAB_LEASE_MS=8000;
+const voiceTabId=(window.crypto&&window.crypto.randomUUID)?window.crypto.randomUUID():'tab_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+let voiceTabActive=false;
 let encargadosObj={}, wakeLock=null;
 let productStatusObj={}, productosArr=[];
 let voiceRate=parseFloat(localStorage.getItem('voiceRate_v1'))||1.0;
@@ -445,11 +451,35 @@ async function speakEleven(text,onDone,allowVoiceRetry=true,attempt=0){
   }catch(e){setVoiceMsg((e.message||'ElevenLabs no respondió')+' No se reprodujo el aviso.','#f08d75');onDone&&onDone();}
 }
 function speakOne(text,onDone){speakEleven(text,onDone);}
-$('testVoiceBtn').onclick=()=>{if(currentAudio){currentAudio.pause();currentAudio=null;}speakOne(fraseAleatoria('un','Chaufa','nuevo','saltado'));};
+function readVoiceTabLease(){
+  try{return JSON.parse(localStorage.getItem(VOICE_TAB_LEASE_KEY)||'null');}catch(e){return null;}
+}
+function claimVoiceTabLease(){
+  if(!voiceDeviceAllowed||!soundOn){voiceTabActive=false;return false;}
+  const now=Date.now();
+  const lease=readVoiceTabLease();
+  if(!lease||lease.id===voiceTabId||Number(lease.expires)<now){
+    localStorage.setItem(VOICE_TAB_LEASE_KEY,JSON.stringify({id:voiceTabId,expires:now+VOICE_TAB_LEASE_MS}));
+    voiceTabActive=true;
+  }else voiceTabActive=false;
+  return voiceTabActive;
+}
+function releaseVoiceTabLease(){
+  const lease=readVoiceTabLease();
+  if(lease?.id===voiceTabId)localStorage.removeItem(VOICE_TAB_LEASE_KEY);
+  voiceTabActive=false;
+}
+function canThisTabSpeak(){return soundOn&&voiceDeviceAllowed&&claimVoiceTabLease();}
+
+$('testVoiceBtn').onclick=()=>{
+  if(!canThisTabSpeak()){setVoiceMsg(voiceDeviceAllowed?'Otra pestaña de Cocina tiene la voz.':'La voz está reservada al celular.','#f0c450');return;}
+  if(currentAudio){currentAudio.pause();currentAudio=null;}
+  speakOne(fraseAleatoria('un','Chaufa','nuevo','saltado'));
+};
 
 function encolarAnuncio(art,label,nivel='nuevo',station=''){
   speechChain=speechChain.then(()=>new Promise(resolve=>{
-    if(!soundOn){resolve();return;}
+    if(!canThisTabSpeak()){resolve();return;}
     speakOne(fraseAleatoria(art,label,nivel,station),resolve);
   }));
 }
@@ -567,11 +597,11 @@ $('turnoIniciarBtn').onclick=()=>{
 
 // ---- Estados de productos ----
 function parseConfigValue(value,fallback){
-  if(value==null)return fallback;
-  if(typeof value==='string'){
-    try{return JSON.parse(value)||fallback;}catch(e){return fallback;}
+  let parsed=value;
+  for(let i=0;i<2&&typeof parsed==='string';i++){
+    try{parsed=JSON.parse(parsed);}catch(e){return fallback;}
   }
-  return typeof value==='object'?value:fallback;
+  return parsed&&typeof parsed==='object'?parsed:fallback;
 }
 async function loadProducts(){
   try{
@@ -581,8 +611,13 @@ async function loadProducts(){
   productosArr=[...productosArr,...SOUP_PRODUCTS];
 }
 async function loadProductStatus(){
-  const cfg=(await api("config?key=eq.product_status")||[])[0];
-  productStatusObj=parseConfigValue(cfg?.value,{});
+  const [legacyRows,currentRows]=await Promise.all([
+    api("config?key=eq.pan_estados"),
+    api("config?key=eq.product_status")
+  ]);
+  const legacy=parseConfigValue(legacyRows?.[0]?.value,{});
+  const current=parseConfigValue(currentRows?.[0]?.value,{});
+  productStatusObj={...legacy,...current};
 }
 async function refreshProductStatus(){
   try{
@@ -592,7 +627,11 @@ async function refreshProductStatus(){
   }catch(e){}
 }
 async function saveProductStatus(){
-  await api('config',{method:'POST',body:JSON.stringify({key:'product_status',value:JSON.stringify(productStatusObj)}),prefer:'resolution=merge-duplicates'});
+  const value=JSON.stringify(productStatusObj);
+  await Promise.all([
+    api('config',{method:'POST',body:JSON.stringify({key:'product_status',value}),prefer:'resolution=merge-duplicates'}),
+    api('config',{method:'POST',body:JSON.stringify({key:'pan_estados',value}),prefer:'resolution=merge-duplicates'})
+  ]);
 }
 function getProductStatus(id){return productStatusObj[id]||'';}
 async function setProductStatus(id,status){
@@ -786,10 +825,19 @@ $('unlockBtn').onclick=()=>{
 };
 
 function actualizarControlSonido(){
-  $('soundToggle').textContent=soundOn?'🔊 Este equipo habla':'🔇 Este equipo en silencio';
-  $('soundToggle').classList.toggle('off',!soundOn);
-  $('unlockText').textContent=soundOn?'Toca para activar el sonido y la voz':'Toca para abrir Cocina';
-  $('unlockBtn').textContent=soundOn?'Activar sonido':'Abrir Cocina';
+  if(!voiceDeviceAllowed){
+    soundOn=false;
+    $('soundToggle').textContent='🔇 Voz solo en celular';
+    $('soundToggle').classList.add('off');
+    $('unlockText').textContent='Toca para abrir Cocina';
+    $('unlockBtn').textContent='Abrir Cocina';
+    return;
+  }
+  const active=soundOn&&voiceTabActive;
+  $('soundToggle').textContent=!soundOn?'🔇 Este celular en silencio':active?'🔊 Este celular habla':'🔇 Otra pestaña tiene la voz';
+  $('soundToggle').classList.toggle('off',!active);
+  $('unlockText').textContent=active?'Toca para activar el sonido y la voz':'Toca para abrir Cocina';
+  $('unlockBtn').textContent=active?'Activar sonido':'Abrir Cocina';
 }
 
 function detenerVozActiva(){
@@ -797,13 +845,22 @@ function detenerVozActiva(){
   if(currentAudio){currentAudio.pause();if(currentAudioResolve)currentAudioResolve();currentAudio=null;}
 }
 
+if(soundOn)claimVoiceTabLease();
 actualizarControlSonido();
 $('soundToggle').onclick=()=>{
+  if(!voiceDeviceAllowed){actualizarControlSonido();return;}
   soundOn=!soundOn;
   localStorage.setItem('soundOn_v1',String(soundOn));
+  if(soundOn)claimVoiceTabLease();else releaseVoiceTabLease();
   actualizarControlSonido();
   if(!soundOn)detenerVozActiva();
 };
+setInterval(()=>{
+  const wasActive=voiceTabActive;
+  if(soundOn)claimVoiceTabLease();else releaseVoiceTabLease();
+  if(wasActive!==voiceTabActive){if(wasActive&&!voiceTabActive)detenerVozActiva();actualizarControlSonido();}
+},2500);
+window.addEventListener('beforeunload',releaseVoiceTabLease);
 $('recuentoBtn').onclick=()=>{const p=ordersArr.filter(o=>o.status==='pending').sort((a,b)=>orderCreatedMs(a)-orderCreatedMs(b));if(!p.length)return;p.forEach(o=>encolarAnuncio(o.art,o.label,'nuevo',o.station));};
 $('fullscreenBtn').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});else document.exitFullscreen();};
 $('clearAllBtn').onclick=()=>{if(confirm('¿Vaciar TODA la cola?')){api('orders?status=eq.pending',{method:'DELETE',prefer:'return=minimal'});ordersArr=[];render();try{speechSynthesis.cancel();}catch(e){}if(currentAudio){currentAudio.pause();if(currentAudioResolve)currentAudioResolve();currentAudio=null;}speechChain=Promise.resolve();}};

@@ -210,6 +210,7 @@ async function api(path,opts={}){
 let panes=[],ordersArr=[],sopasArr=[],statsObj={},timeStatsObj={},panEstados={},turnoEncargados={};
 let quantityProduct=null;
 let lastHash='';
+let lastPanStatusHash='';
 
 async function autoResetDiario(){
   try{
@@ -283,9 +284,41 @@ function render(){
   });
 }
 
+function parseConfigObject(value){
+  let parsed=value;
+  for(let i=0;i<2&&typeof parsed==='string';i++){
+    try{parsed=JSON.parse(parsed);}catch(e){return {};}
+  }
+  return parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:{};
+}
+
+async function loadSharedProductStatus(){
+  const [legacyRows,currentRows]=await Promise.all([
+    api("config?key=eq.pan_estados"),
+    api("config?key=eq.product_status")
+  ]);
+  const legacy=parseConfigObject(legacyRows?.[0]?.value);
+  const current=parseConfigObject(currentRows?.[0]?.value);
+  return {...legacy,...current};
+}
+
+async function refreshPanEstados(){
+  try{
+    const next=await loadSharedProductStatus();
+    const hash=JSON.stringify(next);
+    if(hash===lastPanStatusHash)return;
+    panEstados=next;lastPanStatusHash=hash;render();
+  }catch(e){}
+}
+
 async function guardarEstado(panId,estado){
   if(estado==='normal')delete panEstados[panId];else panEstados[panId]=estado;
-  await api('config',{method:'POST',body:JSON.stringify({key:'pan_estados',value:JSON.stringify(panEstados)}),prefer:'resolution=merge-duplicates'});
+  const value=JSON.stringify(panEstados);
+  await Promise.all([
+    api('config',{method:'POST',body:JSON.stringify({key:'product_status',value}),prefer:'resolution=merge-duplicates'}),
+    api('config',{method:'POST',body:JSON.stringify({key:'pan_estados',value}),prefer:'resolution=merge-duplicates'})
+  ]);
+  lastPanStatusHash=value;
   render();
 }
 
@@ -481,11 +514,12 @@ async function init(){
     statsObj={};statsArr.forEach(s=>statsObj[s.pan_id]=s.count||0);
     const tsArr=await api('time_stats?select=*')||[];
     timeStatsObj={};tsArr.forEach(s=>timeStatsObj[s.pan_id]=s);
-    const estArr=await api("config?key=eq.pan_estados")||[];
-    panEstados=estArr[0]?.value||{};
+    panEstados=await loadSharedProductStatus();
+    lastPanStatusHash=JSON.stringify(panEstados);
   }catch(e){console.error(e);}
   render();renderCola();renderSopas();
   setInterval(pollCaja,2000);
+  setInterval(refreshPanEstados,2000);
 }
 init();
 </script>
