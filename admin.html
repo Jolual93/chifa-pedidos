@@ -91,8 +91,9 @@ const SB_URL='https://vjmnbzjtvuwqowxvknlu.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqbW5iemp0dnV3cW93eHZrbmx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMjg5OTYsImV4cCI6MjA5ODcwNDk5Nn0.Z3TNYCnOytTwNyWnCfSj5NtgyxHdPfB0_Rz9jv6Bdro';
 const STATION_LABELS={chaufero:'🍚 Chaufero',frituras:'🍤 Frituras',saltado:'🥘 Saltado'};
 const STATION_LIST=['chaufero','frituras','saltado'];
+const DEFAULT_STAFF=['Eloy','Jefferson','Benjamin','Victor','Jeremy'];
 const $=id=>document.getElementById(id);
-let staffList=[];
+let staffList=[...DEFAULT_STAFF];
 
 async function api(path,opts={}){
   const {headers:extraHeaders, prefer, ...restOpts} = opts;
@@ -110,6 +111,16 @@ async function api(path,opts={}){
 }
 
 function formatTime(sec){if(!sec&&sec!==0)return'–';if(sec<60)return sec+'s';const m=Math.floor(sec/60),s=Math.round(sec%60);return m+'m'+(s>0?' '+s+'s':'');}
+
+function parseStaffList(value){
+  let parsed=value;
+  for(let i=0;i<2&&typeof parsed==='string';i++){
+    try{parsed=JSON.parse(parsed);}catch(e){break;}
+  }
+  if(!Array.isArray(parsed))return [...DEFAULT_STAFF];
+  const clean=parsed.map(n=>String(n||'').trim()).filter(Boolean);
+  return clean;
+}
 
 async function loadAll(){
   // Turno
@@ -177,7 +188,7 @@ async function loadAll(){
 
   // Staff list
   const cfg=(await api("config?key=eq.staff_list")||[])[0];
-  staffList=cfg?.value||['Eloy','Jefferson','Benjamin','Victor','Jeremy'];
+  staffList=parseStaffList(cfg?.value);
   renderStaffTags();
 }
 
@@ -212,6 +223,8 @@ cargarHistorial();
 // Personal
 function renderStaffTags(){
   const w=$('staffTagList');w.innerHTML='';
+  if(!Array.isArray(staffList))staffList=parseStaffList(staffList);
+  if(!staffList.length){w.innerHTML='<span style="color:#777;font-size:12px">No hay personal registrado.</span>';return;}
   staffList.forEach((n,i)=>{
     const t=document.createElement('span');t.className='staff-tag';
     t.innerHTML=`<span class="staff-name" id="sname-${i}">${n}</span>

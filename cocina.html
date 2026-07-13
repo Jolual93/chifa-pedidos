@@ -92,7 +92,7 @@ h1{font-size:22px;margin:0 0 4px}
 <div class="conn-err" id="connErr">⚠️ Sin conexión al servidor. Verifica el internet.</div>
 <div class="unlock-bg" id="unlockBg">
   <div style="font-size:40px">🔔</div>
-  <div style="color:#eee;font-size:15px;text-align:center;max-width:280px">Toca para activar el sonido y la voz</div>
+  <div id="unlockText" style="color:#eee;font-size:15px;text-align:center;max-width:280px">Toca para activar el sonido y la voz</div>
   <button id="unlockBtn">Activar sonido</button>
 </div>
 <div class="turno-bg" id="turnoBg">
@@ -203,7 +203,10 @@ const $=id=>document.getElementById(id);
 
 let ordersArr=[], seenIds=new Set(), firstLoad=true;
 let orderAlertLevels={};
-let soundOn=true, encargadosObj={}, wakeLock=null;
+const savedSoundOn=localStorage.getItem('soundOn_v1');
+const mobileVoiceDefault=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'');
+let soundOn=savedSoundOn==null?mobileVoiceDefault:savedSoundOn==='true';
+let encargadosObj={}, wakeLock=null;
 let productStatusObj={}, productosArr=[];
 let voiceRate=parseFloat(localStorage.getItem('voiceRate_v1'))||1.0;
 let voicePitch=parseFloat(localStorage.getItem('voicePitch_v1'))||1.2;
@@ -768,13 +771,31 @@ function iniciarAudioBackground(){
 $('unlockBtn').onclick=()=>{
   $('unlockBg').style.display='none';
   try{const A=window.AudioContext||window.webkitAudioContext;if(A){const c=new A();c.resume();}}catch(e){}
-  try{if(window.speechSynthesis){const u=new SpeechSynthesisUtterance('Listo');u.lang='es';u.volume=0.01;speechSynthesis.speak(u);}}catch(e){}
+  try{if(soundOn&&window.speechSynthesis){const u=new SpeechSynthesisUtterance('Listo');u.lang='es';u.volume=0.01;speechSynthesis.speak(u);}}catch(e){}
   try{if('wakeLock' in navigator)navigator.wakeLock.request('screen').then(wl=>{wakeLock=wl;}).catch(()=>{});}catch(e){}
   // Iniciar audio de background para mantener el contexto vivo en Android
   iniciarAudioBackground();
 };
 
-$('soundToggle').onclick=()=>{soundOn=!soundOn;$('soundToggle').textContent=soundOn?'🔊 Sonido: ON':'🔇 Sonido: OFF';$('soundToggle').classList.toggle('off',!soundOn);if(!soundOn){try{speechSynthesis.cancel();}catch(e){}if(currentAudio){currentAudio.pause();if(currentAudioResolve)currentAudioResolve();currentAudio=null;}}};
+function actualizarControlSonido(){
+  $('soundToggle').textContent=soundOn?'🔊 Este equipo habla':'🔇 Este equipo en silencio';
+  $('soundToggle').classList.toggle('off',!soundOn);
+  $('unlockText').textContent=soundOn?'Toca para activar el sonido y la voz':'Toca para abrir Cocina';
+  $('unlockBtn').textContent=soundOn?'Activar sonido':'Abrir Cocina';
+}
+
+function detenerVozActiva(){
+  try{speechSynthesis.cancel();}catch(e){}
+  if(currentAudio){currentAudio.pause();if(currentAudioResolve)currentAudioResolve();currentAudio=null;}
+}
+
+actualizarControlSonido();
+$('soundToggle').onclick=()=>{
+  soundOn=!soundOn;
+  localStorage.setItem('soundOn_v1',String(soundOn));
+  actualizarControlSonido();
+  if(!soundOn)detenerVozActiva();
+};
 $('recuentoBtn').onclick=()=>{const p=ordersArr.filter(o=>o.status==='pending').sort((a,b)=>orderCreatedMs(a)-orderCreatedMs(b));if(!p.length)return;p.forEach(o=>encolarAnuncio(o.art,o.label,'nuevo',o.station));};
 $('fullscreenBtn').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});else document.exitFullscreen();};
 $('clearAllBtn').onclick=()=>{if(confirm('¿Vaciar TODA la cola?')){api('orders?status=eq.pending',{method:'DELETE',prefer:'return=minimal'});ordersArr=[];render();try{speechSynthesis.cancel();}catch(e){}if(currentAudio){currentAudio.pause();if(currentAudioResolve)currentAudioResolve();currentAudio=null;}speechChain=Promise.resolve();}};
