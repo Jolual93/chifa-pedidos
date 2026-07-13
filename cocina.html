@@ -220,6 +220,8 @@ let productStatusObj={}, productosArr=[];
 let voiceRate=parseFloat(localStorage.getItem('voiceRate_v1'))||1.0;
 let speechChain=Promise.resolve();
 let popupQueue=[],popupWin=null;
+const popupAllowed=!mobileVoiceDefault;
+let popupEnabled=popupAllowed&&localStorage.getItem('popupEnabled_v1')!=='false';
 
 async function api(path,opts={}){
   try{
@@ -415,6 +417,7 @@ async function readElevenError(res){
 function waitEleven(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 
 async function speakEleven(text,onDone,allowVoiceRetry=true,attempt=0){
+  if(!voiceDeviceAllowed){onDone&&onDone();return;}
   try{
     if(!elevenKey||!elevenVoiceId)throw new Error('Falta API key o voz');
     let res;
@@ -518,8 +521,9 @@ syncVoiceControls();
 if(elevenKey)loadElevenVoices();
 
 // ---- Popup flotante ----
-function notificar(label,station){popupQueue.push({label,station});mostrarPopup();}
+function notificar(label,station){if(!popupEnabled||!popupAllowed)return;popupQueue.push({label,station});mostrarPopup();}
 function mostrarPopup(){
+  if(!popupEnabled||!popupAllowed)return;
   if(popupWin&&!popupWin.closed){try{actualizarPopup();}catch(e){}return;}
   const w=320,h=420,left=window.screen.availWidth-w-20,top=window.screen.availHeight-h-60;
   popupWin=window.open('','pedidos_popup',`width=${w},height=${h},left=${left},top=${top},resizable=no,scrollbars=no,status=no,toolbar=no,menubar=no,location=no`);
@@ -537,7 +541,19 @@ function actualizarPopup(){
 }
 window.cerrarItem=i=>{popupQueue.splice(i,1);if(!popupQueue.length){if(popupWin&&!popupWin.closed)popupWin.close();popupWin=null;}else actualizarPopup();};
 window.cerrarTodo=()=>{popupQueue=[];if(popupWin&&!popupWin.closed)popupWin.close();popupWin=null;};
-$('notifBtn').onclick=()=>notificar('Prueba de pedido','frituras');
+function actualizarControlPopup(){
+  if(!popupAllowed){popupEnabled=false;$('notifBtn').style.display='none';return;}
+  $('notifBtn').textContent=popupEnabled?'🪟 Popup: ON':'🪟 Popup: OFF';
+  $('notifBtn').style.opacity=popupEnabled?'1':'.55';
+}
+$('notifBtn').onclick=()=>{
+  if(!popupAllowed)return;
+  popupEnabled=!popupEnabled;
+  localStorage.setItem('popupEnabled_v1',String(popupEnabled));
+  if(!popupEnabled)window.cerrarTodo();
+  actualizarControlPopup();
+};
+actualizarControlPopup();
 
 // ---- Turno ----
 function buildTurnoOverlay(){
@@ -603,6 +619,17 @@ function parseConfigValue(value,fallback){
   }
   return parsed&&typeof parsed==='object'?parsed:fallback;
 }
+function normalizeProductStatus(value){return value==='demorar'?'demora':value;}
+function normalizeStatusObject(obj){
+  const normalized={};
+  Object.entries(obj||{}).forEach(([id,status])=>{const value=normalizeProductStatus(status);if(value)normalized[id]=value;});
+  return normalized;
+}
+function toLegacyStatusObject(obj){
+  const legacy={};
+  Object.entries(obj||{}).forEach(([id,status])=>{legacy[id]=status==='demora'?'demorar':status;});
+  return legacy;
+}
 async function loadProducts(){
   try{
     const arr=await api('panes?select=id,label,station')||[];
@@ -617,7 +644,7 @@ async function loadProductStatus(){
   ]);
   const legacy=parseConfigValue(legacyRows?.[0]?.value,{});
   const current=parseConfigValue(currentRows?.[0]?.value,{});
-  productStatusObj={...legacy,...current};
+  productStatusObj=normalizeStatusObject({...legacy,...current});
 }
 async function refreshProductStatus(){
   try{
@@ -627,15 +654,18 @@ async function refreshProductStatus(){
   }catch(e){}
 }
 async function saveProductStatus(){
+  productStatusObj=normalizeStatusObject(productStatusObj);
   const value=JSON.stringify(productStatusObj);
+  const legacyValue=JSON.stringify(toLegacyStatusObject(productStatusObj));
   await Promise.all([
     api('config',{method:'POST',body:JSON.stringify({key:'product_status',value}),prefer:'resolution=merge-duplicates'}),
-    api('config',{method:'POST',body:JSON.stringify({key:'pan_estados',value}),prefer:'resolution=merge-duplicates'})
+    api('config',{method:'POST',body:JSON.stringify({key:'pan_estados',value:legacyValue}),prefer:'resolution=merge-duplicates'})
   ]);
 }
-function getProductStatus(id){return productStatusObj[id]||'';}
+function getProductStatus(id){return normalizeProductStatus(productStatusObj[id])||'';}
 async function setProductStatus(id,status){
-  if(status)productStatusObj[id]=status;else delete productStatusObj[id];
+  const normalized=normalizeProductStatus(status);
+  if(normalized)productStatusObj[id]=normalized;else delete productStatusObj[id];
   await saveProductStatus();render();renderStatusManager();
 }
 function renderStatusManager(){
@@ -846,6 +876,7 @@ function detenerVozActiva(){
 }
 
 if(soundOn)claimVoiceTabLease();
+if(!voiceDeviceAllowed)detenerVozActiva();
 actualizarControlSonido();
 $('soundToggle').onclick=()=>{
   if(!voiceDeviceAllowed){actualizarControlSonido();return;}

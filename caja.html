@@ -18,8 +18,8 @@ h1{font-size:20px;margin:0 0 4px}.sub{color:#999;font-size:13px;margin-bottom:10
 .pan.empty::after{content:"En cocina…";position:absolute;bottom:6px;left:0;right:0;font-size:10px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.7)}
 .pan.agotado{cursor:not-allowed;filter:grayscale(.85) brightness(.4)}
 .pan.agotado::after{content:"AGOTADO";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#ff6b6b;letter-spacing:1px}
-.pan.demorar{opacity:.75;border-color:#f0c450!important}
-.pan.demorar::after{content:"⏰ DEMORA";position:absolute;bottom:4px;left:0;right:0;font-size:9px;font-weight:800;color:#f0c450;text-align:center}
+.pan.demora,.pan.demorar{opacity:.75;border-color:#f0c450!important}
+.pan.demora::after,.pan.demorar::after{content:"⏰ DEMORA";position:absolute;bottom:4px;left:0;right:0;font-size:9px;font-weight:800;color:#f0c450;text-align:center}
 @keyframes emptyPulse{0%,100%{opacity:.55}50%{opacity:.85}}
 .pan .edit{position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;color:#555;z-index:5}
 .pan .estado-btn{position:absolute;bottom:2px;left:2px;font-size:9px;cursor:pointer;background:rgba(0,0,0,.5);color:#fff;border-radius:4px;padding:1px 4px;z-index:5;line-height:1.4}
@@ -249,10 +249,10 @@ function render(){
   const grid=$('grid');grid.innerHTML='';
   const pendingIds=new Set(ordersArr.filter(o=>o.status==='pending').map(o=>o.pan_id));
   panes.forEach(p=>{
-    const estado=panEstados[p.id]||'normal';
+    const estado=normalizeProductStatus(panEstados[p.id])||'normal';
     const isEmpty=pendingIds.has(p.id);
     const div=document.createElement('div');
-    let cls='pan';if(isEmpty)cls+=' empty';if(estado==='agotado')cls+=' agotado';if(estado==='demorar')cls+=' demorar';
+    let cls='pan';if(isEmpty)cls+=' empty';if(estado==='agotado')cls+=' agotado';if(estado==='demora')cls+=' demora';
     div.className=cls;div.style.background=p.color;
     if(p.col)div.style.gridColumn=p.col+'/'+(p.col+1);
     if(p.r1&&p.r2)div.style.gridRow=p.r1+'/'+(p.r2+1);
@@ -264,14 +264,14 @@ function render(){
     const edit=document.createElement('div');edit.className='edit';edit.textContent='✎';
     edit.onclick=e=>{e.stopPropagation();openEdit(p);};div.appendChild(edit);
     const stBtn=document.createElement('div');stBtn.className='estado-btn';
-    stBtn.textContent=estado==='agotado'?'❌':estado==='demorar'?'⏰':'•••';
+    stBtn.textContent=estado==='agotado'?'❌':estado==='demora'?'⏰':'•••';
     stBtn.onclick=e=>{
       e.stopPropagation();
       document.querySelectorAll('.estado-menu').forEach(m=>m.remove());
       const menu=document.createElement('div');menu.className='estado-menu';
       const rect=stBtn.getBoundingClientRect();
       menu.style.left=rect.left+'px';menu.style.top=Math.max(10,rect.top-110)+'px';
-      [['✅ Normal','normal'],['❌ Agotado','agotado'],['⏰ Va a demorar','demorar']].forEach(([txt,val])=>{
+      [['✅ Normal','normal'],['❌ Agotado','agotado'],['⏰ Va a demorar','demora']].forEach(([txt,val])=>{
         const b=document.createElement('button');b.textContent=txt;
         if(estado===val)b.style.background='#444';
         b.onclick=()=>{menu.remove();guardarEstado(p.id,val);};
@@ -292,6 +292,18 @@ function parseConfigObject(value){
   return parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:{};
 }
 
+function normalizeProductStatus(value){return value==='demorar'?'demora':value;}
+function normalizeStatusObject(obj){
+  const normalized={};
+  Object.entries(obj||{}).forEach(([id,status])=>{const value=normalizeProductStatus(status);if(value)normalized[id]=value;});
+  return normalized;
+}
+function toLegacyStatusObject(obj){
+  const legacy={};
+  Object.entries(obj||{}).forEach(([id,status])=>{legacy[id]=status==='demora'?'demorar':status;});
+  return legacy;
+}
+
 async function loadSharedProductStatus(){
   const [legacyRows,currentRows]=await Promise.all([
     api("config?key=eq.pan_estados"),
@@ -299,7 +311,7 @@ async function loadSharedProductStatus(){
   ]);
   const legacy=parseConfigObject(legacyRows?.[0]?.value);
   const current=parseConfigObject(currentRows?.[0]?.value);
-  return {...legacy,...current};
+  return normalizeStatusObject({...legacy,...current});
 }
 
 async function refreshPanEstados(){
@@ -312,11 +324,13 @@ async function refreshPanEstados(){
 }
 
 async function guardarEstado(panId,estado){
-  if(estado==='normal')delete panEstados[panId];else panEstados[panId]=estado;
-  const value=JSON.stringify(panEstados);
+  const normalized=normalizeProductStatus(estado);
+  if(normalized==='normal'||!normalized)delete panEstados[panId];else panEstados[panId]=normalized;
+  const value=JSON.stringify(normalizeStatusObject(panEstados));
+  const legacyValue=JSON.stringify(toLegacyStatusObject(panEstados));
   await Promise.all([
     api('config',{method:'POST',body:JSON.stringify({key:'product_status',value}),prefer:'resolution=merge-duplicates'}),
-    api('config',{method:'POST',body:JSON.stringify({key:'pan_estados',value}),prefer:'resolution=merge-duplicates'})
+    api('config',{method:'POST',body:JSON.stringify({key:'pan_estados',value:legacyValue}),prefer:'resolution=merge-duplicates'})
   ]);
   lastPanStatusHash=value;
   render();
