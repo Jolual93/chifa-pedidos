@@ -41,6 +41,14 @@ h1{font-size:20px;margin:0 0 4px}.sub{color:#999;font-size:13px;margin-bottom:10
 .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
 .btn{padding:6px 12px;border-radius:6px;font-size:13px;border:none;cursor:pointer}
 .btn.cancel{background:#eee}.btn.save{background:#b53030;color:#fff}
+.quantity-modal{width:min(340px,92vw)}
+.quantity-modal h3{margin:0 0 5px;font-size:17px}.quantity-modal p{margin:0 0 14px;color:#666;font-size:12px}
+.quantity-stepper{display:grid;grid-template-columns:52px 1fr 52px;gap:8px;align-items:center;margin-bottom:12px}
+.quantity-stepper button{height:48px;border:1px solid #ccc;border-radius:8px;background:#f3f3f3;color:#333;font-size:24px;font-weight:700;cursor:pointer}
+.quantity-stepper input{width:100%;height:48px;border:2px solid #b53030;border-radius:8px;text-align:center;font-size:24px;font-weight:800;color:#222}
+.quantity-presets{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.qty-preset{height:34px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#444;font-size:13px;font-weight:700;cursor:pointer}
+.qty-preset:hover{border-color:#b53030;color:#b53030}
 .top-btns{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .top-btn{background:#333;color:#eee;border:1px solid #555;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer}
 .cola-wrap{margin-top:14px;width:100%;max-width:900px}
@@ -132,6 +140,34 @@ h1{font-size:20px;margin:0 0 4px}.sub{color:#999;font-size:13px;margin-bottom:10
   </div>
 </div>
 
+<div class="modal-bg" id="quantityModalBg">
+  <div class="modal quantity-modal" role="dialog" aria-modal="true" aria-labelledby="quantityTitle">
+    <h3 id="quantityTitle">Cantidad</h3>
+    <p>Elige cuántas unidades quieres mandar a cocina.</p>
+    <div class="quantity-stepper">
+      <button type="button" id="qtyMinus" aria-label="Restar una unidad">−</button>
+      <input type="number" id="qtyInput" min="1" max="99" value="1" inputmode="numeric" aria-label="Cantidad">
+      <button type="button" id="qtyPlus" aria-label="Sumar una unidad">+</button>
+    </div>
+    <div class="quantity-presets" aria-label="Cantidades rápidas">
+      <button type="button" class="qty-preset" data-qty="1">1</button>
+      <button type="button" class="qty-preset" data-qty="2">2</button>
+      <button type="button" class="qty-preset" data-qty="3">3</button>
+      <button type="button" class="qty-preset" data-qty="4">4</button>
+      <button type="button" class="qty-preset" data-qty="5">5</button>
+      <button type="button" class="qty-preset" data-qty="6">6</button>
+      <button type="button" class="qty-preset" data-qty="8">8</button>
+      <button type="button" class="qty-preset" data-qty="10">10</button>
+      <button type="button" class="qty-preset" data-qty="12">12</button>
+      <button type="button" class="qty-preset" data-qty="20">20</button>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn cancel" id="cancelQuantity">Cancelar</button>
+      <button type="button" class="btn save" id="sendQuantity">Enviar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const SB_URL='https://vjmnbzjtvuwqowxvknlu.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqbW5iemp0dnV3cW93eHZrbmx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMjg5OTYsImV4cCI6MjA5ODcwNDk5Nn0.Z3TNYCnOytTwNyWnCfSj5NtgyxHdPfB0_Rz9jv6Bdro';
@@ -157,6 +193,7 @@ const DEFAULT_PANES=[
 ];
 const STATION_META={chaufero:{label:'🍚 Chaufero',cls:'chaufero'},frituras:{label:'🍤 Frituras',cls:'frituras'},saltado:{label:'🥘 Saltado',cls:'saltado'}};
 const STATION_ORDER=['chaufero','frituras','saltado'];
+const QUANTITY_PRODUCT_IDS=new Set(['p8','p12']);
 const $=id=>document.getElementById(id);
 
 async function api(path,opts={}){
@@ -171,6 +208,7 @@ async function api(path,opts={}){
 }
 
 let panes=[],ordersArr=[],sopasArr=[],statsObj={},timeStatsObj={},panEstados={},turnoEncargados={};
+let quantityProduct=null;
 let lastHash='';
 
 async function autoResetDiario(){
@@ -220,6 +258,7 @@ function render(){
     div.textContent=p.label;
     if(estado==='agotado')div.onclick=()=>showToast('"'+p.label+'" está agotado','#b53030');
     else if(isEmpty)div.onclick=()=>showToast('"'+p.label+'" ya está en cocina','#b53030');
+    else if(QUANTITY_PRODUCT_IDS.has(p.id))div.onclick=()=>abrirCantidad(p);
     else div.onclick=()=>enviarPedido(p);
     const edit=document.createElement('div');edit.className='edit';edit.textContent='✎';
     edit.onclick=e=>{e.stopPropagation();openEdit(p);};div.appendChild(edit);
@@ -283,11 +322,46 @@ function renderSopas(){
   });
 }
 
-async function enviarPedido(p){
+function normalizarCantidad(value){
+  const n=Math.round(Number(value)||1);
+  return Math.max(1,Math.min(99,n));
+}
+
+function abrirCantidad(p){
+  quantityProduct=p;
+  $('quantityTitle').textContent='Cantidad de '+p.label;
+  $('qtyInput').value='1';
+  $('quantityModalBg').classList.add('show');
+  setTimeout(()=>$('qtyInput').select(),0);
+}
+
+function cerrarCantidad(){
+  $('quantityModalBg').classList.remove('show');
+  quantityProduct=null;
+}
+
+function ajustarCantidad(delta){
+  $('qtyInput').value=normalizarCantidad(normalizarCantidad($('qtyInput').value)+delta);
+}
+
+async function confirmarCantidad(){
+  if(!quantityProduct)return;
+  const p=quantityProduct;
+  const cantidad=normalizarCantidad($('qtyInput').value);
+  const plural=p.id==='p8'?'Plátanos':'Huevos';
+  const label=cantidad===1?p.label:cantidad+' '+plural;
+  const art=cantidad===1?(p.art||'un'):'';
+  cerrarCantidad();
+  await enviarPedido(p,{label,art});
+}
+
+async function enviarPedido(p,detalle={}){
   if(ordersArr.some(o=>o.pan_id===p.id&&o.status==='pending')){showToast('"'+p.label+'" ya está en cola','#b53030');return;}
-  const order={id:'o_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),pan_id:p.id,label:p.label,color:p.color,station:p.station,art:p.art||'un',status:'pending',created_at:Date.now()};
+  const label=detalle.label||p.label;
+  const art=detalle.art!==undefined?detalle.art:(p.art||'un');
+  const order={id:'o_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),pan_id:p.id,label,color:p.color,station:p.station,art,status:'pending',created_at:Date.now()};
   await api('orders',{method:'POST',body:JSON.stringify(order)});
-  ordersArr.push(order);render();renderCola();showToast('Enviado: '+p.label,'#2e7d4f');
+  ordersArr.push(order);render();renderCola();showToast('Enviado: '+label,'#2e7d4f');
 }
 
 async function marcarListoCaja(order){
@@ -319,6 +393,18 @@ async function marcarSopaLista(sopa){
 
 $('btnSopaP').onclick=()=>pedirSopa('sopa_p');
 $('btnSopaG').onclick=()=>pedirSopa('sopa_g');
+$('qtyMinus').onclick=()=>ajustarCantidad(-1);
+$('qtyPlus').onclick=()=>ajustarCantidad(1);
+$('cancelQuantity').onclick=cerrarCantidad;
+$('sendQuantity').onclick=confirmarCantidad;
+$('quantityModalBg').onclick=e=>{if(e.target===$('quantityModalBg'))cerrarCantidad();};
+document.querySelectorAll('.qty-preset').forEach(btn=>btn.onclick=()=>{$('qtyInput').value=btn.dataset.qty;});
+$('qtyInput').onchange=e=>{e.target.value=normalizarCantidad(e.target.value);};
+document.addEventListener('keydown',e=>{
+  if(!$('quantityModalBg').classList.contains('show'))return;
+  if(e.key==='Escape')cerrarCantidad();
+  if(e.key==='Enter')confirmarCantidad();
+});
 
 function showToast(text,color){
   const t=document.createElement('div');t.className='toast';t.style.background=color||'#2e7d4f';t.textContent=text;

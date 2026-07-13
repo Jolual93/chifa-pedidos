@@ -20,6 +20,10 @@ h1{font-size:22px;margin:0 0 4px}
 .station.chaufero{border-color:#c8a84b}
 .station.frituras{border-color:#c87d3a}
 .station.saltado{border-color:#b53030}
+.soup-section{width:100%;max-width:1300px;margin-top:16px}
+.station.sopas{width:100%;border-color:#2e5a8e;background:#141d27}
+.station.sopas .card{color:#fff;border-color:#5f9ed5}
+.station.sopas .card .time{color:#d7e9fa}
 .scount{background:#444;border-radius:14px;padding:2px 10px;font-size:13px}
 .encargado-badge{font-size:11px;background:rgba(255,255,255,.12);border-radius:12px;padding:2px 8px;color:#eee;cursor:pointer}
 .encargado-badge:hover{background:rgba(255,255,255,.22)}
@@ -168,11 +172,18 @@ h1{font-size:22px;margin:0 0 4px}
     <div class="empty" id="empty-saltado" style="display:none">Sin pedidos 🎉</div>
   </div>
 </div>
+<div class="soup-section">
+  <div class="station sopas">
+    <h2>🍜 Sopas <span class="scount" id="cnt-sopas">0</span></h2>
+    <div class="queue" id="queue-sopas"></div>
+    <div class="empty" id="empty-sopas" style="display:none">Sin sopas pendientes 🎉</div>
+  </div>
+</div>
 
 <script>
 const SB_URL='https://vjmnbzjtvuwqowxvknlu.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqbW5iemp0dnV3cW93eHZrbmx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMjg5OTYsImV4cCI6MjA5ODcwNDk5Nn0.Z3TNYCnOytTwNyWnCfSj5NtgyxHdPfB0_Rz9jv6Bdro';
-const STATION_LABELS={chaufero:'🍚 Chaufero',frituras:'🍤 Frituras',saltado:'🥘 Saltado'};
+const STATION_LABELS={chaufero:'🍚 Chaufero',frituras:'🍤 Frituras',saltado:'🥘 Saltado',sopas:'🍜 Sopas'};
 const STATION_LIST=['chaufero','frituras','saltado'];
 const DEFAULT_PRODUCTS=[
   {id:'p1',label:'Arroz chaufa',station:'chaufero'},{id:'p2',label:'Tequeños',station:'frituras'},
@@ -185,7 +196,7 @@ const DEFAULT_PRODUCTS=[
   {id:'p15',label:'Alitas',station:'frituras'},{id:'p16',label:'Wantanes',station:'frituras'},
   {id:'p17',label:'Tamarindo',station:'saltado'}
 ];
-const SOUP_PRODUCTS=[{id:'sopa_pequena',label:'Sopa pequeña',station:'saltado',isSoup:true},{id:'sopa_litro',label:'Sopa 1 litro',station:'saltado',isSoup:true}];
+const SOUP_PRODUCTS=[{id:'sopa_p',label:'Sopa pequeña',station:'sopas',isSoup:true},{id:'sopa_g',label:'Sopa 1 litro',station:'sopas',isSoup:true}];
 const STATUS_LABELS={demora:'Va a demorar',agotado:'Agotado'};
 let STAFF=['Eloy','Jefferson','Benjamin','Victor','Jeremy'];
 const $=id=>document.getElementById(id);
@@ -318,37 +329,37 @@ $('pitchRange').oninput=e=>{voicePitch=parseFloat(e.target.value);$('pitchVal').
 
 const FRASES={
   nuevo:[
-    'Sale {art} {plato}. Al toque, muchachos, con ritmo.',
-    'Entra comanda: {art} {plato}. Fuego con eso.',
+    'Sale {art} {plato}. Al toque, muchachos, .',
+    'Entra comanda: {art} {plato}. apurense con eso.',
     'Cantando, equipo: {art} {plato}. En marcha.',
     'Mesa esperando {art} {plato}. Vamos armandolo.',
     'Nuevo pedido, sale {art} {plato}. Manos a la obra.',
     'Atentos en linea, entra {art} {plato}.',
-    'Vamos marcando {art} {plato}. Cero errores y buena letra.',
+    'Vamos marcando {art} {plato}. Cero errores y rápido.',
     'Pedido en cola: {art} {plato}. Lo quiero perfecto y rapido.'
   ],
   min5:[
     'Muchachos, van cinco minutos con {art} {plato}. ¿En que estamos?',
-    'Ojo con {art} {plato}, no lo dejen enfriar en la mente. Muevanse.',
-    'Cocina, revisen {art} {plato}. No quiero retrasos con esta mesa.',
+    'Ojo con {art} {plato}, no lo dejen enfriar. Muevanse.',
+    'Cocina, revisen {art} {plato}. No quiero retrasos con este cliente.',
     'Ese {plato} necesita salir ya. Metele punche.',
     'Atencion aqui, {art} {plato} ya tiene cinco. Vamos cerrandolo.',
-    'Aceleren con {art} {plato}, no se me duerman en la linea.',
+    'Aceleren con {art} {plato}, no se me duerman.',
     'Vamos, equipo, {art} {plato} sigue colgado. ¿Falta mucho?',
     'Ponganse las pilas con {art} {plato}, ya toca sacarlo.'
   ],
   min10:[
     '¡Diez minutos con {art} {plato}! Ponganse las pilas de una vez, esto es prioridad.',
-    '¡Cocina, me estan durmiendo {art} {plato}! ¡Saquenlo primero, ya!',
-    '¿Alguien me explica por que {art} {plato} sigue esperando? Movimiento, señores.',
+    '¡Cocina, se me estan durmiendo {art} {plato}! ¡Saquenlo primero, ya!',
+    '¿Alguien me explica por que {art} {plato} sigue esperando? Moviéndose, señores.',
     '¡Ese {plato} ya esta rojo en la pantalla! No puede seguir ahi.',
-    '¡Dejen de dar vueltas y saquenme {art} {plato}! Lo quiero en la ventana.',
+    '¡Dejen de dar vueltas y saquenme {art} {plato}! Lo quiero en la ventana ya.',
     'Equipo, necesito {art} {plato} para ayer. ¡Aprieten, aprieten!',
     '¡Diez minutos es un abuso! {art} {plato} tiene que salir en este instante.',
-    '¡Despierten en la linea! Enfoquen {art} {plato}, no quiero ni una excusa.'
+    '¡Despierten en cocina! Enfoquen {art} {plato}, no quiero ni una excusa.'
   ],
   min15:[
-    '¡Quince minutos por {art} {plato}! ¿Estan bromeando conmigo? ¡A la ventana AHORA!',
+    '¡Quince minutos por {art} {plato}! ¿Estan bromeando conmigo? ¡SAQUENLO AHORA!',
     '¡Ese {plato} ya es una falta de respeto al cliente! ¡Paren todo y saquenlo!',
     '¡Quince minutos, caramba! Si {art} {plato} no sale en 30 segundos, entro yo mismo.',
     '¡Estan volando, señores! {art} {plato} esta en critico, ¡solucion inmediata!',
@@ -360,7 +371,8 @@ const FRASES={
 };
 const ALERTAS_TIEMPO=[{min:5,key:'min5'},{min:10,key:'min10'},{min:15,key:'min15'}];
 function plantillaVoz(tpl,art,label){
-  return tpl.replaceAll('{art}',art||'un').replaceAll('{plato}',label);
+  const nombre=[art,label].filter(Boolean).join(' ');
+  return tpl.replaceAll('{art} {plato}',nombre).replaceAll('{art}',art||'').replaceAll('{plato}',label);
 }
 function responsableDeEstacion(station){
   const nombre=(encargadosObj[station]||'').trim();
@@ -368,14 +380,14 @@ function responsableDeEstacion(station){
 }
 function prepararFraseParaResponsable(frase){
   return frase
-    .replace(/^¡Cocina,s*/i,'¡')
-    .replace(/^Cocina,s*/i,'')
-    .replace(/^Equipo,s*/i,'')
-    .replace(/^Vamos,s*equipo,s*/i,'')
-    .replace(/^Muchachos,s*/i,'')
-    .replace(/^Atentos en linea,s*/i,'')
-    .replace(/^Atencion aqui,s*/i,'')
-    .replace(/^Cantando,s*equipo:s*/i,'');
+    .replace(/^¡Cocina,\s*/i,'¡')
+    .replace(/^Cocina,\s*/i,'')
+    .replace(/^Equipo,\s*/i,'')
+    .replace(/^Vamos,\s*equipo,\s*/i,'')
+    .replace(/^Muchachos,\s*/i,'')
+    .replace(/^Atentos en linea,\s*/i,'')
+    .replace(/^Atencion aqui,\s*/i,'')
+    .replace(/^Cantando,\s*equipo:\s*/i,'');
 }
 function fraseAleatoria(art,label,nivel='nuevo',station=''){
   const banco=FRASES[nivel]||FRASES.nuevo;
@@ -474,8 +486,8 @@ function mostrarPopup(){
 }
 function actualizarPopup(){
   if(!popupWin||popupWin.closed)return;
-  const sc={chaufero:'#c8a84b',frituras:'#c87d3a',saltado:'#b53030'};
-  const sn={chaufero:'🍚 Chaufero',frituras:'🍤 Frituras',saltado:'🥘 Saltado'};
+  const sc={chaufero:'#c8a84b',frituras:'#c87d3a',saltado:'#b53030',sopas:'#2e5a8e'};
+  const sn={chaufero:'🍚 Chaufero',frituras:'🍤 Frituras',saltado:'🥘 Saltado',sopas:'🍜 Sopas'};
   const items=popupQueue.map((p,i)=>`<div style="background:#1e1e1e;border-radius:10px;padding:12px 14px;border-left:4px solid ${sc[p.station]||'#888'};display:flex;justify-content:space-between;align-items:center;gap:8px"><div><div style="font-size:11px;color:#aaa;margin-bottom:2px">${sn[p.station]||'Cocina'}</div><div style="font-size:16px;font-weight:700;color:#fff">${p.label}</div></div><button onclick="parent.cerrarItem(${i})" style="background:#2e7d4f;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer">✓ Visto</button></div>`).join('');
   popupWin.document.open();
   popupWin.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>🔔 Pedidos</title><style>*{box-sizing:border-box;margin:0;padding:0}body{background:#101010;font-family:'Segoe UI',Arial,sans-serif;display:flex;flex-direction:column;height:100vh}.header{background:#b53030;padding:10px 14px;display:flex;align-items:center;justify-content:space-between}.header span{color:#fff;font-weight:700;font-size:14px}.badge{background:#fff;color:#b53030;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}.list{padding:10px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1}.cerrar-todo{margin:8px;background:#333;color:#eee;border:none;border-radius:8px;padding:8px;font-size:12px;cursor:pointer;width:calc(100% - 16px)}</style></head><body><div class="header"><span>🔔 Nuevos pedidos <span class="badge">${popupQueue.length}</span></span></div><div class="list">${items}</div><button class="cerrar-todo" onclick="parent.cerrarTodo()">✓ Marcar todos como vistos</button></body></html>`);
@@ -593,33 +605,33 @@ $('statusBtn').onclick=()=>{refreshProductStatus().finally(()=>{renderStatusMana
 $('closeStatusBtn').onclick=()=>$('statusModalBg').classList.remove('show');
 
 // ---- Render ----
+function renderQueue(st,ords){
+  const queue=$('queue-'+st);queue.innerHTML='';
+  $('cnt-'+st).textContent=ords.length;
+  $('empty-'+st).style.display=ords.length?'none':'block';
+  ords.forEach((o,idx)=>{
+    const isNew=!seenIds.has(o.id);
+    const pst=getProductStatus(o.pan_id);
+    const card=document.createElement('div');card.className='card'+(isNew?' new-blink':'')+(pst?' status-'+pst:'');card.style.background=o.color;
+    const pos=document.createElement('div');pos.className='pos';pos.textContent=idx+1;
+    const name=document.createElement('div');name.className='name';name.textContent=o.label;
+    const time=document.createElement('div');time.className='time';
+    const mins=Math.max(0,Math.round((Date.now()-o.created_at)/60000));
+    time.textContent=mins===0?'recién':'hace '+mins+' min';
+    const btn=document.createElement('button');btn.textContent='✓ Listo';btn.onclick=()=>marcarListo(o);
+    card.appendChild(pos);card.appendChild(name);
+    if(pst){const pill=document.createElement('div');pill.className='status-pill '+pst;pill.textContent=STATUS_LABELS[pst];card.appendChild(pill);}
+    card.appendChild(time);card.appendChild(btn);
+    queue.appendChild(card);
+    if(isNew)seenIds.add(o.id);
+  });
+}
+
 function render(){
   const pending=ordersArr.filter(o=>o.status==='pending').sort((a,b)=>a.created_at-b.created_at);
-  let total=0;
-  STATION_LIST.forEach(st=>{
-    const ords=pending.filter(o=>(o.station||'saltado')===st);
-    total+=ords.length;
-    const queue=$('queue-'+st);queue.innerHTML='';
-    $('cnt-'+st).textContent=ords.length;
-    $('empty-'+st).style.display=ords.length?'none':'block';
-    ords.forEach((o,idx)=>{
-      const isNew=!seenIds.has(o.id);
-      const pst=getProductStatus(o.pan_id);
-      const card=document.createElement('div');card.className='card'+(isNew?' new-blink':'')+(pst?' status-'+pst:'');card.style.background=o.color;
-      const pos=document.createElement('div');pos.className='pos';pos.textContent=idx+1;
-      const name=document.createElement('div');name.className='name';name.textContent=o.label;
-      const time=document.createElement('div');time.className='time';
-      const mins=Math.max(0,Math.round((Date.now()-o.created_at)/60000));
-      time.textContent=mins===0?'recién':'hace '+mins+' min';
-      const btn=document.createElement('button');btn.textContent='✓ Listo';btn.onclick=()=>marcarListo(o);
-      card.appendChild(pos);card.appendChild(name);
-      if(pst){const pill=document.createElement('div');pill.className='status-pill '+pst;pill.textContent=STATUS_LABELS[pst];card.appendChild(pill);}
-      card.appendChild(time);card.appendChild(btn);
-      queue.appendChild(card);
-      if(isNew)seenIds.add(o.id);
-    });
-  });
-  $('countBadge').textContent=total;
+  STATION_LIST.forEach(st=>renderQueue(st,pending.filter(o=>(o.station||'saltado')===st)));
+  renderQueue('sopas',pending.filter(o=>o.station==='sopas'));
+  $('countBadge').textContent=pending.length;
 }
 
 async function marcarListo(order){
@@ -628,6 +640,7 @@ async function marcarListo(order){
   await api('orders?id=eq.'+order.id,{method:'PATCH',body:JSON.stringify({status:'ready',done_at:Date.now(),encargado,marked_by:'cocina'})});
   const i=ordersArr.findIndex(o=>o.id===order.id);if(i>-1)ordersArr.splice(i,1);
   render();
+  if(order.station==='sopas')return;
   // Stats
   const statsArr=await api('stats?pan_id=eq.'+order.pan_id)||[];
   const cur=statsArr[0]?.count||0;
