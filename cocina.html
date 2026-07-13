@@ -136,7 +136,7 @@ h1{font-size:22px;margin:0 0 4px}
 </div>
 <div class="voice-panel" id="voicePanel">
   <div class="voice-row">
-    <div><label>Motor de voz</label><select id="voiceEngine"><option value="eleven">ElevenLabs</option><option value="browser">Navegador / Windows</option></select></div>
+    <div><label>Motor de voz</label><select id="voiceEngine" disabled><option value="eleven">Solo ElevenLabs</option></select></div>
     <div><label>API key ElevenLabs</label><input type="password" id="elevenKey" placeholder="Pega tu API key"></div>
   </div>
   <div class="voice-row">
@@ -149,11 +149,8 @@ h1{font-size:22px;margin:0 0 4px}
     <label>Código interno de voz (solo respaldo)</label>
     <input type="text" id="elevenVoiceManual" placeholder="Voice ID">
   </details>
-  <label>Voz del navegador</label>
-  <select id="voiceSelect"></select>
   <div class="voice-row">
     <div><label>Velocidad: <span id="rateVal">1.0</span></label><input type="range" id="rateRange" min="0.6" max="1.4" step="0.05" value="1"></div>
-    <div><label>Tono: <span id="pitchVal">1.2</span></label><input type="range" id="pitchRange" min="0.5" max="2" step="0.05" value="1.2"></div>
   </div>
   <button id="testVoiceBtn">▶ Probar voz</button>
 </div>
@@ -215,8 +212,6 @@ let soundOn=savedSoundOn==null?mobileVoiceDefault:savedSoundOn==='true';
 let encargadosObj={}, wakeLock=null;
 let productStatusObj={}, productosArr=[];
 let voiceRate=parseFloat(localStorage.getItem('voiceRate_v1'))||1.0;
-let voicePitch=parseFloat(localStorage.getItem('voicePitch_v1'))||1.2;
-let allVoices=[],spanishVoice=null;
 let speechChain=Promise.resolve();
 let popupQueue=[],popupWin=null;
 
@@ -273,7 +268,8 @@ function wsListen(table,cb){
 }
 
 // ---- Voz ----
-let voiceEngine=localStorage.getItem('voiceEngine_v2')||'eleven';
+let voiceEngine='eleven';
+localStorage.setItem('voiceEngine_v2','eleven');
 let elevenKey=localStorage.getItem('elevenApiKey_v1')||'';
 let elevenVoiceId=localStorage.getItem('elevenVoiceId_v1')||'';
 let elevenModel=localStorage.getItem('elevenModel_v1')||'eleven_multilingual_v2';
@@ -284,7 +280,6 @@ function syncVoiceControls(){
   $('voiceEngine').value=voiceEngine;$('elevenKey').value=elevenKey;$('elevenModel').value=elevenModel;
   $('elevenVoiceManual').value=elevenVoiceId;
   $('rateRange').value=voiceRate;$('rateVal').textContent=voiceRate.toFixed(2);
-  $('pitchRange').value=voicePitch;$('pitchVal').textContent=voicePitch.toFixed(2);
   renderElevenVoiceSelect();
 }
 function renderElevenVoiceSelect(){
@@ -318,32 +313,13 @@ async function loadElevenVoices(){
     return false;
   }
 }
-function pickVoice(){
-  const voices=speechSynthesis.getVoices();
-  allVoices=voices.filter(v=>v.lang&&v.lang.toLowerCase().startsWith('es'));
-  if(!allVoices.length)allVoices=voices;
-  const saved=localStorage.getItem('voiceName_v1');
-  spanishVoice=(saved&&allVoices.find(v=>v.name===saved))||allVoices.find(v=>v.lang==='es-PE')||allVoices[0]||null;
-  populateVoiceSelect();
-}
-pickVoice();
-if('speechSynthesis' in window) speechSynthesis.onvoiceschanged=pickVoice;
-
-function populateVoiceSelect(){
-  const sel=$('voiceSelect');sel.innerHTML='';
-  allVoices.forEach(v=>{const o=document.createElement('option');o.value=v.name;o.textContent=v.name+' ('+v.lang+')';if(spanishVoice&&v.name===spanishVoice.name)o.selected=true;sel.appendChild(o);});
-  syncVoiceControls();
-}
 $('voiceBtn').onclick=()=>$('voicePanel').classList.toggle('show');
-$('voiceEngine').onchange=e=>{voiceEngine=e.target.value;localStorage.setItem('voiceEngine_v2',voiceEngine);if(voiceEngine==='eleven'&&elevenKey)loadElevenVoices();};
 $('elevenKey').onchange=e=>{elevenKey=e.target.value.trim();localStorage.setItem('elevenApiKey_v1',elevenKey);};
 $('elevenVoiceSelect').onchange=e=>{elevenVoiceId=e.target.value;localStorage.setItem('elevenVoiceId_v1',elevenVoiceId);$('elevenVoiceManual').value=elevenVoiceId;};
 $('elevenVoiceManual').onchange=e=>{elevenVoiceId=e.target.value.trim();localStorage.setItem('elevenVoiceId_v1',elevenVoiceId);renderElevenVoiceSelect();setVoiceMsg(elevenVoiceId?'Voice ID guardado':'Voice ID vacío',elevenVoiceId?'#6fcf97':'#f0c450');};
 $('elevenModel').onchange=e=>{elevenModel=e.target.value;localStorage.setItem('elevenModel_v1',elevenModel);};
 $('loadElevenVoicesBtn').onclick=loadElevenVoices;
-$('voiceSelect').onchange=e=>{spanishVoice=allVoices.find(v=>v.name===e.target.value)||null;if(spanishVoice)localStorage.setItem('voiceName_v1',spanishVoice.name);};
 $('rateRange').oninput=e=>{voiceRate=parseFloat(e.target.value);$('rateVal').textContent=voiceRate.toFixed(2);localStorage.setItem('voiceRate_v1',voiceRate);};
-$('pitchRange').oninput=e=>{voicePitch=parseFloat(e.target.value);$('pitchVal').textContent=voicePitch.toFixed(2);localStorage.setItem('voicePitch_v1',voicePitch);};
 
 const FRASES={
   nuevo:[
@@ -417,18 +393,6 @@ function fraseAleatoria(art,label,nivel='nuevo',station=''){
   return responsable+', '+frase.charAt(0).toLowerCase()+frase.slice(1);
 }
 
-function speakBrowser(text,onDone,pOverride,rOverride){
-  try{
-    const u=new SpeechSynthesisUtterance(text);
-    if(spanishVoice)u.voice=spanishVoice;
-    u.lang=(spanishVoice&&spanishVoice.lang)||'es-PE';
-    u.rate=rOverride!=null?rOverride:voiceRate;
-    u.pitch=pOverride!=null?pOverride:voicePitch;
-    u.volume=1;
-    u.onend=()=>onDone&&onDone();u.onerror=()=>onDone&&onDone();
-    speechSynthesis.speak(u);
-  }catch(e){onDone&&onDone();}
-}
 async function readElevenError(res){
   const raw=await res.text();
   try{
@@ -442,20 +406,32 @@ async function readElevenError(res){
   }catch(e){return {code:'',message:'ElevenLabs rechazó la solicitud.'};}
 }
 
-async function speakEleven(text,onDone,allowVoiceRetry=true){
+function waitEleven(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+
+async function speakEleven(text,onDone,allowVoiceRetry=true,attempt=0){
   try{
     if(!elevenKey||!elevenVoiceId)throw new Error('Falta API key o voz');
-    const res=await fetch('https://api.elevenlabs.io/v1/text-to-speech/'+encodeURIComponent(elevenVoiceId)+'?output_format=mp3_44100_128',{
-      method:'POST',
-      headers:{'xi-api-key':elevenKey,'Content-Type':'application/json'},
-      body:JSON.stringify({text,model_id:elevenModel,voice_settings:{stability:.45,similarity_boost:.8,style:.15,use_speaker_boost:true,speed:Math.max(.7,Math.min(1.2,voiceRate))}})
-    });
+    let res;
+    try{
+      res=await fetch('https://api.elevenlabs.io/v1/text-to-speech/'+encodeURIComponent(elevenVoiceId)+'?output_format=mp3_44100_128',{
+        method:'POST',
+        headers:{'xi-api-key':elevenKey,'Content-Type':'application/json'},
+        body:JSON.stringify({text,model_id:elevenModel,voice_settings:{stability:.45,similarity_boost:.8,style:.15,use_speaker_boost:true,speed:Math.max(.7,Math.min(1.2,voiceRate))}})
+      });
+    }catch(networkError){
+      if(attempt<2){await waitEleven(700*(attempt+1));return speakEleven(text,onDone,allowVoiceRetry,attempt+1);}
+      throw new Error('No se pudo conectar con ElevenLabs.');
+    }
     if(!res.ok){
       const error=await readElevenError(res);
       if(error.code==='voice_not_found'&&allowVoiceRetry){
         const previousId=elevenVoiceId;
         const recovered=await loadElevenVoices();
-        if(recovered&&elevenVoiceId&&elevenVoiceId!==previousId)return speakEleven(text,onDone,false);
+        if(recovered&&elevenVoiceId&&elevenVoiceId!==previousId)return speakEleven(text,onDone,false,attempt);
+      }
+      if([408,429,500,502,503,504].includes(res.status)&&error.code!=='quota_exceeded'&&attempt<2){
+        await waitEleven(700*(attempt+1));
+        return speakEleven(text,onDone,allowVoiceRetry,attempt+1);
       }
       throw new Error(error.message);
     }
@@ -466,19 +442,15 @@ async function speakEleven(text,onDone,allowVoiceRetry=true){
     const done=()=>{if(finished)return;finished=true;URL.revokeObjectURL(url);if(currentAudio===audio)currentAudio=null;currentAudioResolve=null;onDone&&onDone();};
     currentAudioResolve=done;audio.onended=done;audio.onerror=done;
     await audio.play();
-  }catch(e){setVoiceMsg((e.message||'ElevenLabs no respondió')+' Se usó la voz del navegador.','#f0c450');speakBrowser(text,onDone);}
+  }catch(e){setVoiceMsg((e.message||'ElevenLabs no respondió')+' No se reprodujo el aviso.','#f08d75');onDone&&onDone();}
 }
-function speakOne(text,onDone,pOverride,rOverride){
-  if(voiceEngine==='eleven')speakEleven(text,onDone);else speakBrowser(text,onDone,pOverride,rOverride);
-}
-$('testVoiceBtn').onclick=()=>{try{speechSynthesis.cancel();}catch(e){}if(currentAudio){currentAudio.pause();currentAudio=null;}speakOne(fraseAleatoria('un','Chaufa','nuevo','saltado'));};
+function speakOne(text,onDone){speakEleven(text,onDone);}
+$('testVoiceBtn').onclick=()=>{if(currentAudio){currentAudio.pause();currentAudio=null;}speakOne(fraseAleatoria('un','Chaufa','nuevo','saltado'));};
 
 function encolarAnuncio(art,label,nivel='nuevo',station=''){
   speechChain=speechChain.then(()=>new Promise(resolve=>{
     if(!soundOn){resolve();return;}
-    const jp=Math.max(.5,Math.min(2,voicePitch+(Math.random()*.3-.15)));
-    const jr=Math.max(.6,Math.min(1.4,voiceRate+(Math.random()*.16-.08)));
-    speakOne(fraseAleatoria(art,label,nivel,station),resolve,jp,jr);
+    speakOne(fraseAleatoria(art,label,nivel,station),resolve);
   }));
 }
 
@@ -513,7 +485,7 @@ function revisarAvisosPorTiempo(){
 }
 
 syncVoiceControls();
-if(elevenKey&&voiceEngine==='eleven')loadElevenVoices();
+if(elevenKey)loadElevenVoices();
 
 // ---- Popup flotante ----
 function notificar(label,station){popupQueue.push({label,station});mostrarPopup();}
@@ -808,7 +780,6 @@ function iniciarAudioBackground(){
 $('unlockBtn').onclick=()=>{
   $('unlockBg').style.display='none';
   try{const A=window.AudioContext||window.webkitAudioContext;if(A){const c=new A();c.resume();}}catch(e){}
-  try{if(soundOn&&window.speechSynthesis){const u=new SpeechSynthesisUtterance('Listo');u.lang='es';u.volume=0.01;speechSynthesis.speak(u);}}catch(e){}
   try{if('wakeLock' in navigator)navigator.wakeLock.request('screen').then(wl=>{wakeLock=wl;}).catch(()=>{});}catch(e){}
   // Iniciar audio de background para mantener el contexto vivo en Android
   iniciarAudioBackground();
