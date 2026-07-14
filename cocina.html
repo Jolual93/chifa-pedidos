@@ -63,6 +63,21 @@ h1{font-size:22px;margin:0 0 4px}
 .voice-advanced{margin-top:10px;border-top:1px solid #333;padding-top:8px}
 .voice-advanced summary{color:#888;font-size:12px;cursor:pointer;user-select:none}
 .voice-advanced[open] summary{color:#bbb}
+.sim-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.76);z-index:430;display:none;align-items:center;justify-content:center;padding:16px}
+.sim-modal-bg.show{display:flex}
+.sim-modal{background:#1e1e1e;border:1px solid #4d4d4d;border-radius:10px;padding:18px;width:min(760px,96vw);max-height:90vh;overflow:auto;color:#eee}
+.sim-modal.password{width:min(360px,92vw)}
+.sim-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.sim-header h3{margin:0;font-size:17px}
+.sim-close{width:32px;height:32px;border:1px solid #555;border-radius:6px;background:#292929;color:#ddd;font-size:18px;cursor:pointer}
+.sim-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.sim-section h4{margin:0 0 10px;font-size:14px;color:#f0c450}
+.sim-field{margin-bottom:10px}.sim-field label{display:block;color:#aaa;font-size:12px;margin-bottom:4px}
+.sim-field select,.sim-field input{width:100%;background:#292929;color:#fff;border:1px solid #555;border-radius:6px;padding:8px;font-size:13px}
+.sim-time-buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.sim-action{border:1px solid #666;border-radius:6px;background:#292929;color:#eee;padding:8px 5px;font-size:12px;cursor:pointer}.sim-action:hover{border-color:#caa86a;color:#ffe1a3}
+.sim-soup-row{display:grid;grid-template-columns:1fr 38px 44px 38px;align-items:center;gap:6px;margin-bottom:8px}.sim-soup-row span:first-child{font-size:13px}.sim-count{text-align:center;font-size:18px;font-weight:800;color:#fff}
+.sim-step{height:34px;border:1px solid #555;border-radius:6px;background:#292929;color:#fff;font-size:18px;cursor:pointer}
+.sim-reset{margin-top:10px;border:1px solid #555;border-radius:6px;background:#292929;color:#bbb;padding:7px 10px;font-size:12px;cursor:pointer}
+.sim-msg{min-height:18px;margin-top:12px;color:#aaa;font-size:12px}.sim-error{color:#f08d75;font-size:12px;min-height:18px;margin-top:6px}
+@media(max-width:680px){.sim-grid{grid-template-columns:1fr}.sim-time-buttons{grid-template-columns:repeat(2,1fr)}}
 .status-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:410;display:none;align-items:center;justify-content:center}
 .status-modal-bg.show{display:flex}
 .status-modal{background:#1e1e1e;border-radius:14px;padding:18px;width:min(620px,92vw);max-height:86vh;overflow:auto;border:1px solid #444;color:#eee}
@@ -123,6 +138,45 @@ h1{font-size:22px;margin:0 0 4px}
     <button class="status-close" id="closeStatusBtn">Cerrar</button>
   </div>
 </div>
+<div class="sim-modal-bg" id="simPasswordBg">
+  <div class="sim-modal password">
+    <div class="sim-header"><h3>Modo simulación</h3><button class="sim-close" id="simPasswordClose" title="Cerrar">×</button></div>
+    <div class="sim-field"><label>Contraseña</label><input type="password" id="simPassword" autocomplete="off"></div>
+    <div class="sim-error" id="simPasswordError"></div>
+    <button class="status-close" id="simPasswordEnter">Entrar</button>
+  </div>
+</div>
+<div class="sim-modal-bg" id="simModalBg">
+  <div class="sim-modal">
+    <div class="sim-header"><h3>🧪 Simulación de voz</h3><button class="sim-close" id="simCloseBtn" title="Cerrar">×</button></div>
+    <div class="sim-grid">
+      <div class="sim-section">
+        <h4>Platos y tiempos</h4>
+        <div class="sim-field"><label>Responsable</label><select id="simResponsible"></select></div>
+        <div class="sim-field"><label>Plato</label><select id="simProduct"></select></div>
+        <div class="sim-time-buttons">
+          <button class="sim-action sim-level" data-level="nuevo">Nuevo</button>
+          <button class="sim-action sim-level" data-level="min5">5 min</button>
+          <button class="sim-action sim-level" data-level="min10">10 min</button>
+          <button class="sim-action sim-level" data-level="min15">15 min</button>
+        </div>
+      </div>
+      <div class="sim-section">
+        <h4>Recuento de sopas</h4>
+        <div class="sim-soup-row"><span>Sopa pequeña</span><button class="sim-step" id="simSoupSmallMinus">−</button><span class="sim-count" id="simSoupSmallCount">0</span><button class="sim-step" id="simSoupSmallPlus">+</button></div>
+        <div class="sim-soup-row"><span>Sopa de un litro</span><button class="sim-step" id="simSoupLiterMinus">−</button><span class="sim-count" id="simSoupLiterCount">0</span><button class="sim-step" id="simSoupLiterPlus">+</button></div>
+        <div class="sim-time-buttons">
+          <button class="sim-action sim-soup-level" data-level="nuevo">Recuento</button>
+          <button class="sim-action sim-soup-level" data-level="min5">5 min</button>
+          <button class="sim-action sim-soup-level" data-level="min10">10 min</button>
+          <button class="sim-action sim-soup-level" data-level="min15">15 min</button>
+        </div>
+        <button class="sim-reset" id="simSoupReset">Reiniciar sopas</button>
+      </div>
+    </div>
+    <div class="sim-msg" id="simMessage"></div>
+  </div>
+</div>
 <div class="topbar">
   <h1>👨‍🍳 Cocina</h1>
   <span class="count-badge" id="countBadge">0</span>
@@ -131,6 +185,7 @@ h1{font-size:22px;margin:0 0 4px}
   <button class="popup-btn" id="notifBtn">🪟 Popup: ON</button>
   <span class="sound-toggle" id="voiceBtn">🎙️ Voz</span>
   <span class="sound-toggle" id="statusBtn">⚠️ Estados</span>
+  <span class="sound-toggle" id="simBtn">🧪 Simulación</span>
   <span class="sound-toggle" id="fullscreenBtn">⛶ Pantalla completa</span>
   <span class="sound-toggle" id="clearAllBtn" style="border-color:#b5342f;color:#ff9b8a">🗑 Vaciar cola</span>
 </div>
@@ -371,10 +426,36 @@ const FRASES={
     '¡Cocina, reaccionen! ¿Que parte de urgente no se entiende? ¡{art} {plato} afuera YA!'
   ]
 };
+const FRASES_RESPETUOSAS={
+  nuevo:[
+    '{persona}, sale {art} {plato}. Por favor, vamos avanzándolo.',
+    '{persona}, entra {art} {plato}. Ayúdame preparándolo con buen ritmo.',
+    '{persona}, tenemos {art} {plato} pendiente. Por favor, vamos con eso.',
+    '{persona}, nuevo pedido de {art} {plato}. Vamos trabajándolo.'
+  ],
+  min5:[
+    '{persona}, ya van cinco minutos con {art} {plato}. Por favor, dime cómo vamos.',
+    '{persona}, revisemos {art} {plato}. Ya necesitamos ir cerrándolo.',
+    '{persona}, ese {plato} ya tiene cinco minutos. Por favor, ayúdame a sacarlo.',
+    '{persona}, tenemos pendiente {art} {plato}. Vamos dándole prioridad, por favor.'
+  ],
+  min10:[
+    '{persona}, ya son diez minutos con {art} {plato}. Necesito que lo tomemos como prioridad.',
+    '{persona}, el cliente continúa esperando {art} {plato}. Por favor, vamos sacándolo ya.',
+    '{persona}, necesito apoyo urgente con {art} {plato}. Ya no podemos demorarlo más.',
+    '{persona}, enfoquémonos en {art} {plato}. Necesito que salga cuanto antes, por favor.'
+  ],
+  min15:[
+    '{persona}, ya llegamos a quince minutos con {art} {plato}. Necesito que salga ahora, por favor.',
+    '{persona}, este pedido está en estado crítico. Demos prioridad absoluta a {art} {plato}.',
+    '{persona}, el cliente lleva demasiado tiempo esperando. Por favor, saquemos {art} {plato} inmediatamente.',
+    '{persona}, necesito una solución inmediata para {art} {plato}. El resto puede esperar.'
+  ]
+};
 const ALERTAS_TIEMPO=[{min:5,key:'min5'},{min:10,key:'min10'},{min:15,key:'min15'}];
-function plantillaVoz(tpl,art,label){
+function plantillaVoz(tpl,art,label,persona=''){
   const nombre=[art,label].filter(Boolean).join(' ');
-  return tpl.replaceAll('{art} {plato}',nombre).replaceAll('{art}',art||'').replaceAll('{plato}',label);
+  return tpl.replaceAll('{art} {plato}',nombre).replaceAll('{art}',art||'').replaceAll('{plato}',label).replaceAll('{persona}',persona);
 }
 function responsableDeEstacion(station){
   const nombre=(encargadosObj[station]||'').trim();
@@ -391,11 +472,23 @@ function prepararFraseParaResponsable(frase){
     .replace(/^Atencion aqui,\s*/i,'')
     .replace(/^Cantando,\s*equipo:\s*/i,'');
 }
-function fraseAleatoria(art,label,nivel='nuevo',station=''){
+function tratamientoRespetuoso(nombre){
+  const key=String(nombre||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  if(key.includes('eloy'))return 'Maestro Eloy';
+  if(key.includes('yesmira'))return 'Yesmira';
+  return '';
+}
+function fraseAleatoria(art,label,nivel='nuevo',station='',responsableOverride=null){
+  const responsable=responsableOverride===null?responsableDeEstacion(station):String(responsableOverride||'').trim();
+  const tratamiento=tratamientoRespetuoso(responsable);
+  if(tratamiento){
+    const banco=FRASES_RESPETUOSAS[nivel]||FRASES_RESPETUOSAS.nuevo;
+    const tpl=banco[Math.floor(Math.random()*banco.length)];
+    return plantillaVoz(tpl,art,label,tratamiento);
+  }
   const banco=FRASES[nivel]||FRASES.nuevo;
   const tpl=banco[Math.floor(Math.random()*banco.length)];
   let frase=plantillaVoz(tpl,art,label);
-  const responsable=responsableDeEstacion(station);
   if(!responsable)return frase;
   frase=prepararFraseParaResponsable(frase);
   return responsable+', '+frase.charAt(0).toLowerCase()+frase.slice(1);
@@ -416,8 +509,8 @@ async function readElevenError(res){
 
 function waitEleven(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 
-async function speakEleven(text,onDone,allowVoiceRetry=true,attempt=0){
-  if(!voiceDeviceAllowed){onDone&&onDone();return;}
+async function speakEleven(text,onDone,allowVoiceRetry=true,attempt=0,allowDesktopSimulation=false){
+  if(!voiceDeviceAllowed&&!allowDesktopSimulation){onDone&&onDone();return;}
   try{
     if(!elevenKey||!elevenVoiceId)throw new Error('Falta API key o voz');
     let res;
@@ -428,7 +521,7 @@ async function speakEleven(text,onDone,allowVoiceRetry=true,attempt=0){
         body:JSON.stringify({text,model_id:elevenModel,voice_settings:{stability:.45,similarity_boost:.8,style:.15,use_speaker_boost:true,speed:Math.max(.7,Math.min(1.2,voiceRate))}})
       });
     }catch(networkError){
-      if(attempt<2){await waitEleven(700*(attempt+1));return speakEleven(text,onDone,allowVoiceRetry,attempt+1);}
+      if(attempt<2){await waitEleven(700*(attempt+1));return speakEleven(text,onDone,allowVoiceRetry,attempt+1,allowDesktopSimulation);}
       throw new Error('No se pudo conectar con ElevenLabs.');
     }
     if(!res.ok){
@@ -436,11 +529,11 @@ async function speakEleven(text,onDone,allowVoiceRetry=true,attempt=0){
       if(error.code==='voice_not_found'&&allowVoiceRetry){
         const previousId=elevenVoiceId;
         const recovered=await loadElevenVoices();
-        if(recovered&&elevenVoiceId&&elevenVoiceId!==previousId)return speakEleven(text,onDone,false,attempt);
+        if(recovered&&elevenVoiceId&&elevenVoiceId!==previousId)return speakEleven(text,onDone,false,attempt,allowDesktopSimulation);
       }
       if([408,429,500,502,503,504].includes(res.status)&&error.code!=='quota_exceeded'&&attempt<2){
         await waitEleven(700*(attempt+1));
-        return speakEleven(text,onDone,allowVoiceRetry,attempt+1);
+        return speakEleven(text,onDone,allowVoiceRetry,attempt+1,allowDesktopSimulation);
       }
       throw new Error(error.message);
     }
@@ -453,7 +546,7 @@ async function speakEleven(text,onDone,allowVoiceRetry=true,attempt=0){
     await audio.play();
   }catch(e){setVoiceMsg((e.message||'ElevenLabs no respondió')+' No se reprodujo el aviso.','#f08d75');onDone&&onDone();}
 }
-function speakOne(text,onDone){speakEleven(text,onDone);}
+function speakOne(text,onDone,allowDesktopSimulation=false){speakEleven(text,onDone,true,0,allowDesktopSimulation);}
 function readVoiceTabLease(){
   try{return JSON.parse(localStorage.getItem(VOICE_TAB_LEASE_KEY)||'null');}catch(e){return null;}
 }
@@ -474,6 +567,36 @@ function releaseVoiceTabLease(){
 }
 function canThisTabSpeak(){return soundOn&&voiceDeviceAllowed&&claimVoiceTabLease();}
 
+const NUMEROS_VOZ=['cero','una','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte'];
+function cantidadVoz(n){return NUMEROS_VOZ[n]||String(n);}
+function textoResumenSopas(pequenas,litros,nivel='nuevo'){
+  pequenas=Math.max(0,Number(pequenas)||0);litros=Math.max(0,Number(litros)||0);
+  const total=pequenas+litros;if(!total)return '';
+  let resumen='';
+  if(pequenas&&!litros)resumen='Tenemos en total '+cantidadVoz(pequenas)+' '+(pequenas===1?'sopa pequeña pendiente':'sopas pequeñas pendientes')+'.';
+  else if(litros&&!pequenas)resumen='Tenemos en total '+cantidadVoz(litros)+' '+(litros===1?'sopa de un litro pendiente':'sopas de un litro pendientes')+'.';
+  else resumen='Tenemos en total '+cantidadVoz(total)+' sopas: '+cantidadVoz(pequenas)+' '+(pequenas===1?'pequeña':'pequeñas')+' y '+cantidadVoz(litros)+' '+(litros===1?'de un litro':'de un litro')+'.';
+  const prefijo={nuevo:'Atención. ',min5:'Ya van cinco minutos con las sopas. ',min10:'Atención, las sopas ya son prioridad. ',min15:'Urgente con las sopas. '}[nivel]||'';
+  return prefijo+resumen;
+}
+function contarSopas(orders){
+  let pequenas=0,litros=0;
+  (orders||[]).forEach(o=>{if(o.pan_id==='sopa_p'||/peque/i.test(o.label||''))pequenas++;else if(o.pan_id==='sopa_g'||/litro/i.test(o.label||''))litros++;});
+  return {pequenas,litros};
+}
+function encolarTexto(texto,allowDesktopSimulation=false){
+  if(!texto)return;
+  speechChain=speechChain.then(()=>new Promise(resolve=>{
+    if(!allowDesktopSimulation&&!canThisTabSpeak()){resolve();return;}
+    if(allowDesktopSimulation&&voiceDeviceAllowed&&!canThisTabSpeak()){resolve();return;}
+    speakOne(texto,resolve,allowDesktopSimulation);
+  }));
+}
+function encolarResumenSopas(orders,nivel='nuevo'){
+  const {pequenas,litros}=contarSopas(orders);
+  encolarTexto(textoResumenSopas(pequenas,litros,nivel));
+}
+
 $('testVoiceBtn').onclick=()=>{
   if(!canThisTabSpeak()){setVoiceMsg(voiceDeviceAllowed?'Otra pestaña de Cocina tiene la voz.':'La voz está reservada al celular.','#f0c450');return;}
   if(currentAudio){currentAudio.pause();currentAudio=null;}
@@ -481,10 +604,7 @@ $('testVoiceBtn').onclick=()=>{
 };
 
 function encolarAnuncio(art,label,nivel='nuevo',station=''){
-  speechChain=speechChain.then(()=>new Promise(resolve=>{
-    if(!canThisTabSpeak()){resolve();return;}
-    speakOne(fraseAleatoria(art,label,nivel,station),resolve);
-  }));
+  encolarTexto(fraseAleatoria(art,label,nivel,station));
 }
 
 function orderCreatedMs(order){
@@ -505,15 +625,18 @@ function limpiarAvisosPedidos(){
 }
 function revisarAvisosPorTiempo(){
   if(!soundOn)return;
+  let nivelSopas='',minutosSopas=0;
   ordersArr.filter(o=>o.status==='pending').sort((a,b)=>orderCreatedMs(a)-orderCreatedMs(b)).forEach(o=>{
     const anterior=orderAlertLevels[o.id]||0;
     const actual=nivelActualPedido(o);
     if(actual>anterior){
       orderAlertLevels[o.id]=actual;
       const alerta=ALERTAS_TIEMPO.find(a=>a.min===actual);
-      if(alerta)encolarAnuncio(o.art||'un',o.label,alerta.key,o.station);
+      if(alerta&&o.station==='sopas'&&alerta.min>minutosSopas){nivelSopas=alerta.key;minutosSopas=alerta.min;}
+      else if(alerta)encolarAnuncio(o.art||'un',o.label,alerta.key,o.station);
     }
   });
+  if(nivelSopas)encolarResumenSopas(ordersArr.filter(o=>o.status==='pending'&&o.station==='sopas'),nivelSopas);
   limpiarAvisosPedidos();
 }
 
@@ -685,6 +808,63 @@ function renderStatusManager(){
 $('statusBtn').onclick=()=>{refreshProductStatus().finally(()=>{renderStatusManager();$('statusModalBg').classList.add('show');});};
 $('closeStatusBtn').onclick=()=>$('statusModalBg').classList.remove('show');
 
+// ---- Modo simulación: solo reproduce voz, nunca crea pedidos ----
+let simulationUnlocked=false,simSoupSmall=0,simSoupLiter=0;
+const SIM_ARTICLES={p2:'unos',p4:'unos',p14:'unas',p15:'unas',p16:'unos'};
+function setSimMessage(text,color='#aaa'){$('simMessage').textContent=text||'';$('simMessage').style.color=color;}
+function buildSimulationOptions(){
+  const responsible=$('simResponsible');responsible.innerHTML='';
+  const names=[...new Set([...STAFF,'Eloy','Yesmira'].filter(Boolean))];
+  const generic=document.createElement('option');generic.value='';generic.textContent='Genérico, sin responsable';responsible.appendChild(generic);
+  names.forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=tratamientoRespetuoso(name)||name;responsible.appendChild(o);});
+  const product=$('simProduct');product.innerHTML='';
+  productosArr.filter(p=>!p.isSoup).forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.label;product.appendChild(o);});
+}
+function openSimulation(){buildSimulationOptions();$('simModalBg').classList.add('show');setSimMessage('Las pruebas no crean pedidos ni estadísticas.');}
+function requestSimulation(){
+  if(simulationUnlocked){openSimulation();return;}
+  $('simPassword').value='';$('simPasswordError').textContent='';$('simPasswordBg').classList.add('show');setTimeout(()=>$('simPassword').focus(),0);
+}
+function verifySimulationPassword(){
+  if($('simPassword').value.trim()!=='Holual'){$('simPasswordError').textContent='Contraseña incorrecta.';return;}
+  simulationUnlocked=true;$('simPasswordBg').classList.remove('show');openSimulation();
+}
+function queueSimulationText(text){
+  if(voiceDeviceAllowed&&!canThisTabSpeak()){setSimMessage('Frase: '+text+' · Otra pestaña de Cocina tiene la voz.','#f0c450');return;}
+  setSimMessage('Frase: '+text,'#6fcf97');
+  encolarTexto(text,true);
+}
+function simulateDishLevel(level){
+  const product=productosArr.find(p=>p.id===$('simProduct').value);if(!product)return;
+  const responsable=$('simResponsible').value;
+  const art=SIM_ARTICLES[product.id]||'un';
+  queueSimulationText(fraseAleatoria(art,product.label,level,product.station,responsable));
+}
+function updateSimSoupCounts(){$('simSoupSmallCount').textContent=simSoupSmall;$('simSoupLiterCount').textContent=simSoupLiter;}
+function simulateSoupLevel(level='nuevo'){
+  const text=textoResumenSopas(simSoupSmall,simSoupLiter,level);
+  if(!text){setSimMessage('Agrega al menos una sopa para hacer el recuento.','#f0c450');return;}
+  queueSimulationText(text);
+}
+function changeSimSoup(type,delta,announce){
+  if(type==='small')simSoupSmall=Math.max(0,simSoupSmall+delta);else simSoupLiter=Math.max(0,simSoupLiter+delta);
+  updateSimSoupCounts();if(announce)simulateSoupLevel('nuevo');
+}
+$('simBtn').onclick=requestSimulation;
+$('simPasswordEnter').onclick=verifySimulationPassword;
+$('simPasswordClose').onclick=()=>$('simPasswordBg').classList.remove('show');
+$('simCloseBtn').onclick=()=>$('simModalBg').classList.remove('show');
+$('simPassword').onkeydown=e=>{if(e.key==='Enter')verifySimulationPassword();};
+$('simPasswordBg').onclick=e=>{if(e.target===$('simPasswordBg'))$('simPasswordBg').classList.remove('show');};
+$('simModalBg').onclick=e=>{if(e.target===$('simModalBg'))$('simModalBg').classList.remove('show');};
+document.querySelectorAll('.sim-level').forEach(btn=>btn.onclick=()=>simulateDishLevel(btn.dataset.level));
+document.querySelectorAll('.sim-soup-level').forEach(btn=>btn.onclick=()=>simulateSoupLevel(btn.dataset.level));
+$('simSoupSmallMinus').onclick=()=>changeSimSoup('small',-1,false);
+$('simSoupSmallPlus').onclick=()=>changeSimSoup('small',1,true);
+$('simSoupLiterMinus').onclick=()=>changeSimSoup('liter',-1,false);
+$('simSoupLiterPlus').onclick=()=>changeSimSoup('liter',1,true);
+$('simSoupReset').onclick=()=>{simSoupSmall=0;simSoupLiter=0;updateSimSoupCounts();setSimMessage('Recuento de sopas reiniciado.');};
+
 // ---- Render ----
 function renderQueue(st,ords){
   const queue=$('queue-'+st);queue.innerHTML='';
@@ -753,13 +933,10 @@ async function pollOrders(){
 
     // Detectar nuevos para anunciar
     if(!firstLoad){
-      fresh.forEach(o=>{
-        if(!seenIds.has(o.id)){
-          orderAlertLevels[o.id]=0;
-          encolarAnuncio(o.art||'un', o.label, 'nuevo', o.station);
-          notificar(o.label, o.station);
-        }
-      });
+      const nuevos=fresh.filter(o=>!seenIds.has(o.id));
+      nuevos.forEach(o=>{orderAlertLevels[o.id]=0;notificar(o.label,o.station);});
+      nuevos.filter(o=>o.station!=='sopas').forEach(o=>encolarAnuncio(o.art||'un',o.label,'nuevo',o.station));
+      if(nuevos.some(o=>o.station==='sopas'))encolarResumenSopas(fresh.filter(o=>o.station==='sopas'),'nuevo');
     }
     fresh.forEach(o=>seenIds.add(o.id));
     ordersArr=fresh;
@@ -892,7 +1069,11 @@ setInterval(()=>{
   if(wasActive!==voiceTabActive){if(wasActive&&!voiceTabActive)detenerVozActiva();actualizarControlSonido();}
 },2500);
 window.addEventListener('beforeunload',releaseVoiceTabLease);
-$('recuentoBtn').onclick=()=>{const p=ordersArr.filter(o=>o.status==='pending').sort((a,b)=>orderCreatedMs(a)-orderCreatedMs(b));if(!p.length)return;p.forEach(o=>encolarAnuncio(o.art,o.label,'nuevo',o.station));};
+$('recuentoBtn').onclick=()=>{
+  const pending=ordersArr.filter(o=>o.status==='pending').sort((a,b)=>orderCreatedMs(a)-orderCreatedMs(b));if(!pending.length)return;
+  pending.filter(o=>o.station!=='sopas').forEach(o=>encolarAnuncio(o.art,o.label,'nuevo',o.station));
+  const soups=pending.filter(o=>o.station==='sopas');if(soups.length)encolarResumenSopas(soups,'nuevo');
+};
 $('fullscreenBtn').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});else document.exitFullscreen();};
 $('clearAllBtn').onclick=()=>{if(confirm('¿Vaciar TODA la cola?')){api('orders?status=eq.pending',{method:'DELETE',prefer:'return=minimal'});ordersArr=[];render();try{speechSynthesis.cancel();}catch(e){}if(currentAudio){currentAudio.pause();if(currentAudioResolve)currentAudioResolve();currentAudio=null;}speechChain=Promise.resolve();}};
 
