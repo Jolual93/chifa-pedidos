@@ -91,9 +91,8 @@ const SB_URL='https://vjmnbzjtvuwqowxvknlu.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqbW5iemp0dnV3cW93eHZrbmx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMjg5OTYsImV4cCI6MjA5ODcwNDk5Nn0.Z3TNYCnOytTwNyWnCfSj5NtgyxHdPfB0_Rz9jv6Bdro';
 const STATION_LABELS={chaufero:'🍚 Chaufero',frituras:'🍤 Frituras',saltado:'🥘 Saltado'};
 const STATION_LIST=['chaufero','frituras','saltado'];
-const DEFAULT_STAFF=['Eloy','Jefferson','Benjamin','Victor','Jeremy'];
 const $=id=>document.getElementById(id);
-let staffList=[...DEFAULT_STAFF];
+let staffList=[];
 
 async function api(path,opts={}){
   const {headers:extraHeaders, prefer, ...restOpts} = opts;
@@ -112,16 +111,6 @@ async function api(path,opts={}){
 
 function formatTime(sec){if(!sec&&sec!==0)return'–';if(sec<60)return sec+'s';const m=Math.floor(sec/60),s=Math.round(sec%60);return m+'m'+(s>0?' '+s+'s':'');}
 
-function parseStaffList(value){
-  let parsed=value;
-  for(let i=0;i<2&&typeof parsed==='string';i++){
-    try{parsed=JSON.parse(parsed);}catch(e){break;}
-  }
-  if(!Array.isArray(parsed))return [...DEFAULT_STAFF];
-  const clean=parsed.map(n=>String(n||'').trim()).filter(Boolean);
-  return clean;
-}
-
 async function loadAll(){
   // Turno
   const turno=(await api('turno_actual?select=*')||[])[0];
@@ -137,7 +126,12 @@ async function loadAll(){
   // Staff stats
   const ssArr=await api('staff_stats?select=*')||[];
   const ssMap={};
-  ssArr.forEach(r=>{if(!ssMap[r.staff_key])ssMap[r.staff_key]={nombre:r.nombre,stations:{}};ssMap[r.staff_key].stations[r.station]=r;});
+  ssArr.forEach(r=>{
+    // Ignorar "Sin asignar" en estadísticas
+    if(!r.nombre || r.nombre==='Sin asignar' || r.staff_key==='Sin_asignar') return;
+    if(!ssMap[r.staff_key])ssMap[r.staff_key]={nombre:r.nombre,stations:{}};
+    ssMap[r.staff_key].stations[r.station]=r;
+  });
   const staffGrid=$('staffGrid');staffGrid.innerHTML='';
   const entries=[];
   Object.keys(ssMap).forEach(key=>{
@@ -154,18 +148,19 @@ async function loadAll(){
     card.innerHTML=`<div class="s-name">👤 ${d.nombre}</div>${rows}<div class="s-total">Total: ${total} pedidos</div>`;
     staffGrid.appendChild(card);
   });
-  if(!Object.keys(ssMap).length)staffGrid.innerHTML='<div class="empty-state">Sin datos aún.</div>';
+  if(!Object.keys(ssMap).length)staffGrid.innerHTML='<div class="empty-state">Sin datos aún — los datos aparecen cuando los encargados tienen pedidos completados.</div>';
 
-  // Podium
+  // Podium — solo encargados reales (sin "Sin asignar")
   const pw=$('podiumWrap');pw.innerHTML='';
-  if(entries.length){
-    const byTotal=[...entries].sort((a,b)=>b.total-a.total);
-    const byAvg=[...entries].filter(e=>e.avg>0).sort((a,b)=>a.avg-b.avg);
-    [{icon:'🥇',label:'Más pedidos',entry:byTotal[0],val:byTotal[0]?.total+' pedidos'},
-     {icon:'⚡',label:'Más rápido',entry:byAvg[0],val:formatTime(byAvg[0]?.avg)+' promedio'},
-     {icon:'🏅',label:'Segundo lugar',entry:byTotal[1],val:byTotal[1]?.total+' pedidos'}
+  const validEntries=entries.filter(e=>e.nombre&&e.nombre!=='Sin asignar');
+  if(validEntries.length){
+    const byTotal=[...validEntries].sort((a,b)=>b.total-a.total);
+    const byAvg=[...validEntries].filter(e=>e.avg>0).sort((a,b)=>a.avg-b.avg);
+    [{icon:'🥇',label:'Más pedidos completados',entry:byTotal[0],val:byTotal[0]?.total+' pedidos'},
+     {icon:'⚡',label:'Promedio más rápido',entry:byAvg[0],val:formatTime(byAvg[0]?.avg)+' promedio'},
+     {icon:'🏅',label:'Segundo más activo',entry:byTotal[1],val:byTotal[1]?.total+' pedidos'}
     ].forEach(m=>{if(!m.entry)return;const c=document.createElement('div');c.className='podium-card';c.innerHTML=`<div class="podium-icon">${m.icon}</div><div class="podium-name">${m.entry.nombre}</div><div class="podium-val">${m.label}</div><div class="podium-val" style="color:#f0c450">${m.val}</div>`;pw.appendChild(c);});
-  } else pw.innerHTML='<div class="empty-state">Sin datos suficientes.</div>';
+  } else pw.innerHTML='<div class="empty-state">Sin datos suficientes aún.</div>';
 
   // Productos
   const statsArr=await api('stats?select=*')||[];
@@ -188,7 +183,7 @@ async function loadAll(){
 
   // Staff list
   const cfg=(await api("config?key=eq.staff_list")||[])[0];
-  staffList=parseStaffList(cfg?.value);
+  staffList=cfg?.value||['Eloy','Jefferson','Benjamin','Victor','Jeremy'];
   renderStaffTags();
 }
 
@@ -223,8 +218,6 @@ cargarHistorial();
 // Personal
 function renderStaffTags(){
   const w=$('staffTagList');w.innerHTML='';
-  if(!Array.isArray(staffList))staffList=parseStaffList(staffList);
-  if(!staffList.length){w.innerHTML='<span style="color:#777;font-size:12px">No hay personal registrado.</span>';return;}
   staffList.forEach((n,i)=>{
     const t=document.createElement('span');t.className='staff-tag';
     t.innerHTML=`<span class="staff-name" id="sname-${i}">${n}</span>
