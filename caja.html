@@ -413,7 +413,7 @@ async function enviarPedido(p,detalle={}){
 
 async function marcarListoCaja(order){
   const elapsed=Math.max(0,Math.round((Date.now()-order.created_at)/1000));
-  const encargado=turnoEncargados[order.station]||'Sin asignar';
+  const encargado=String(turnoEncargados[order.station]||'').trim();
   await api('orders?id=eq.'+order.id,{method:'PATCH',body:JSON.stringify({status:'ready',done_at:Date.now(),marked_by:'caja',encargado})});
   const i=ordersArr.findIndex(o=>o.id===order.id);if(i>-1)ordersArr.splice(i,1);
   renderCola();render();
@@ -421,6 +421,12 @@ async function marcarListoCaja(order){
   await api('stats',{method:'POST',body:JSON.stringify({pan_id:order.pan_id,count:cur+1}),prefer:'resolution=merge-duplicates'});
   const ts=timeStatsObj[order.pan_id]||{sum_sec:0,count:0,min_sec:null,max_sec:null};
   await api('time_stats',{method:'POST',body:JSON.stringify({pan_id:order.pan_id,sum_sec:(ts.sum_sec||0)+elapsed,count:(ts.count||0)+1,min_sec:ts.min_sec==null?elapsed:Math.min(ts.min_sec,elapsed),max_sec:ts.max_sec==null?elapsed:Math.max(ts.max_sec,elapsed)}),prefer:'resolution=merge-duplicates'});
+  if(encargado){
+    const sk=encargado.replace(/[^a-zA-Z0-9_]/g,'_');
+    const ssArr=await api('staff_stats?staff_key=eq.'+sk+'&station=eq.'+order.station)||[];
+    const ss=ssArr[0]||{count:0,sum_sec:0};
+    await api('staff_stats',{method:'POST',body:JSON.stringify({id:sk+'_'+order.station,staff_key:sk,station:order.station,nombre:encargado,count:(ss.count||0)+1,sum_sec:(ss.sum_sec||0)+elapsed}),prefer:'resolution=merge-duplicates'});
+  }
   const fecha=new Date().toISOString().slice(0,10);
   await api('history',{method:'POST',body:JSON.stringify({id:'h_'+Date.now(),fecha,label:order.label,pan_id:order.pan_id,station:order.station,encargado,elapsed_sec:elapsed,done_at:Date.now()})});
   showToast('✅ Listo: '+order.label,'#2e7d4f');

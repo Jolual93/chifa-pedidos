@@ -63,7 +63,7 @@ input[type=date]{background:#222;border:1px solid #444;color:#fff;border-radius:
 
 <div class="section"><h2>🕐 Turno actual</h2><div id="turnoInfo" class="turno-info"><div class="empty-state">Cargando...</div></div></div>
 <div class="section"><h2>👥 Rendimiento por encargado</h2><div id="staffGrid" class="staff-grid"><div class="empty-state">Sin datos aún.</div></div></div>
-<div class="section"><h2>🏆 Destacados del turno</h2><div id="podiumWrap" class="podium"><div class="empty-state">Sin datos suficientes.</div></div></div>
+<div class="section"><h2>🏆 Podio de eficiencia</h2><div id="podiumWrap" class="podium"><div class="empty-state">Sin datos suficientes.</div></div></div>
 <div class="section"><h2>📅 Historial por día</h2>
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
     <input type="date" id="historialDate">
@@ -91,8 +91,9 @@ const SB_URL='https://vjmnbzjtvuwqowxvknlu.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqbW5iemp0dnV3cW93eHZrbmx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMjg5OTYsImV4cCI6MjA5ODcwNDk5Nn0.Z3TNYCnOytTwNyWnCfSj5NtgyxHdPfB0_Rz9jv6Bdro';
 const STATION_LABELS={chaufero:'🍚 Chaufero',frituras:'🍤 Frituras',saltado:'🥘 Saltado'};
 const STATION_LIST=['chaufero','frituras','saltado'];
+const DEFAULT_STAFF=['Eloy','Jefferson','Benjamin','Victor','Jeremy'];
 const $=id=>document.getElementById(id);
-let staffList=[];
+let staffList=[...DEFAULT_STAFF];
 
 async function api(path,opts={}){
   const {headers:extraHeaders, prefer, ...restOpts} = opts;
@@ -111,6 +112,21 @@ async function api(path,opts={}){
 
 function formatTime(sec){if(!sec&&sec!==0)return'–';if(sec<60)return sec+'s';const m=Math.floor(sec/60),s=Math.round(sec%60);return m+'m'+(s>0?' '+s+'s':'');}
 
+function parseStaffList(value){
+  let parsed=value;
+  for(let i=0;i<2&&typeof parsed==='string';i++){
+    try{parsed=JSON.parse(parsed);}catch(e){break;}
+  }
+  if(!Array.isArray(parsed))return [...DEFAULT_STAFF];
+  const clean=parsed.map(n=>String(n||'').trim()).filter(Boolean);
+  return clean;
+}
+
+function esResponsableValido(nombre){
+  const normalizado=String(nombre||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  return normalizado!==''&&normalizado!=='sin asignar'&&normalizado!=='sin asignacion';
+}
+
 async function loadAll(){
   // Turno
   const turno=(await api('turno_actual?select=*')||[])[0];
@@ -127,8 +143,7 @@ async function loadAll(){
   const ssArr=await api('staff_stats?select=*')||[];
   const ssMap={};
   ssArr.forEach(r=>{
-    // Ignorar "Sin asignar" en estadísticas
-    if(!r.nombre || r.nombre==='Sin asignar' || r.staff_key==='Sin_asignar') return;
+    if(!esResponsableValido(r.nombre))return;
     if(!ssMap[r.staff_key])ssMap[r.staff_key]={nombre:r.nombre,stations:{}};
     ssMap[r.staff_key].stations[r.station]=r;
   });
@@ -138,6 +153,9 @@ async function loadAll(){
     const d=ssMap[key];let total=0,sumSec=0;
     Object.values(d.stations).forEach(s=>{total+=s.count||0;sumSec+=s.sum_sec||0;});
     if(total>0)entries.push({key,nombre:d.nombre,total,avg:Math.round(sumSec/total),stations:d.stations});
+  });
+  entries.sort((a,b)=>a.avg-b.avg||b.total-a.total||a.nombre.localeCompare(b.nombre,'es'));
+  entries.forEach((d,index)=>{
     const card=document.createElement('div');card.className='staff-card';
     let rows='';
     STATION_LIST.forEach(st=>{
@@ -145,22 +163,21 @@ async function loadAll(){
       const s=d.stations[st];const avg=s.count>0?Math.round(s.sum_sec/s.count):null;
       rows+=`<div class="s-station"><span class="s-st-name">${STATION_LABELS[st]}</span><div><div class="s-count">${s.count||0} 🍽</div><div class="s-avg">⏱ ${formatTime(avg)}</div></div></div>`;
     });
-    card.innerHTML=`<div class="s-name">👤 ${d.nombre}</div>${rows}<div class="s-total">Total: ${total} pedidos</div>`;
+    card.innerHTML=`<div class="s-name">#${index+1} 👤 ${d.nombre}</div>${rows}<div class="s-total">Promedio: ${formatTime(d.avg)} · Total: ${d.total} pedidos</div>`;
     staffGrid.appendChild(card);
   });
-  if(!Object.keys(ssMap).length)staffGrid.innerHTML='<div class="empty-state">Sin datos aún — los datos aparecen cuando los encargados tienen pedidos completados.</div>';
+  if(!entries.length)staffGrid.innerHTML='<div class="empty-state">Sin datos aún.</div>';
 
-  // Podium — solo encargados reales (sin "Sin asignar")
+  // Podium
   const pw=$('podiumWrap');pw.innerHTML='';
-  const validEntries=entries.filter(e=>e.nombre&&e.nombre!=='Sin asignar');
-  if(validEntries.length){
-    const byTotal=[...validEntries].sort((a,b)=>b.total-a.total);
-    const byAvg=[...validEntries].filter(e=>e.avg>0).sort((a,b)=>a.avg-b.avg);
-    [{icon:'🥇',label:'Más pedidos completados',entry:byTotal[0],val:byTotal[0]?.total+' pedidos'},
-     {icon:'⚡',label:'Promedio más rápido',entry:byAvg[0],val:formatTime(byAvg[0]?.avg)+' promedio'},
-     {icon:'🏅',label:'Segundo más activo',entry:byTotal[1],val:byTotal[1]?.total+' pedidos'}
-    ].forEach(m=>{if(!m.entry)return;const c=document.createElement('div');c.className='podium-card';c.innerHTML=`<div class="podium-icon">${m.icon}</div><div class="podium-name">${m.entry.nombre}</div><div class="podium-val">${m.label}</div><div class="podium-val" style="color:#f0c450">${m.val}</div>`;pw.appendChild(c);});
-  } else pw.innerHTML='<div class="empty-state">Sin datos suficientes aún.</div>';
+  if(entries.length){
+    const byAvg=entries.filter(e=>e.avg>=0);
+    [
+      {icon:'🥇',label:'Más eficiente',entry:byAvg[0]},
+      {icon:'🥈',label:'Segundo lugar',entry:byAvg[1]},
+      {icon:'🥉',label:'Tercer lugar',entry:byAvg[2]}
+    ].forEach(m=>{if(!m.entry)return;const c=document.createElement('div');c.className='podium-card';c.innerHTML=`<div class="podium-icon">${m.icon}</div><div class="podium-name">${m.entry.nombre}</div><div class="podium-val">${m.label}</div><div class="podium-val" style="color:#f0c450">${formatTime(m.entry.avg)} promedio · ${m.entry.total} pedidos</div>`;pw.appendChild(c);});
+  } else pw.innerHTML='<div class="empty-state">Sin datos suficientes.</div>';
 
   // Productos
   const statsArr=await api('stats?select=*')||[];
@@ -183,7 +200,7 @@ async function loadAll(){
 
   // Staff list
   const cfg=(await api("config?key=eq.staff_list")||[])[0];
-  staffList=cfg?.value||['Eloy','Jefferson','Benjamin','Victor','Jeremy'];
+  staffList=parseStaffList(cfg?.value);
   renderStaffTags();
 }
 
@@ -218,6 +235,8 @@ cargarHistorial();
 // Personal
 function renderStaffTags(){
   const w=$('staffTagList');w.innerHTML='';
+  if(!Array.isArray(staffList))staffList=parseStaffList(staffList);
+  if(!staffList.length){w.innerHTML='<span style="color:#777;font-size:12px">No hay personal registrado.</span>';return;}
   staffList.forEach((n,i)=>{
     const t=document.createElement('span');t.className='staff-tag';
     t.innerHTML=`<span class="staff-name" id="sname-${i}">${n}</span>
