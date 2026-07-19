@@ -278,6 +278,16 @@ let popupQueue=[],popupWin=null;
 const popupAllowed=!mobileVoiceDefault;
 let popupEnabled=popupAllowed&&localStorage.getItem('popupEnabled_v1')!=='false';
 
+function fechaLima(offsetDays=0){
+  return new Date(Date.now()-(5*60*60*1000)+(offsetDays*86400000)).toISOString().slice(0,10);
+}
+
+function cantidadPedido(order){
+  if(!['p8','p12'].includes(order.pan_id))return 1;
+  const match=String(order.label||'').match(/^(\d+)\s+/);
+  return match?Math.max(1,parseInt(match[1],10)||1):1;
+}
+
 async function api(path,opts={}){
   try{
     const {headers:extraHeaders, prefer, ...restOpts} = opts;
@@ -898,14 +908,19 @@ function render(){
 async function marcarListo(order){
   const encargado=String(encargadosObj[order.station]||'').trim();
   const elapsed=Math.max(0,Math.round((Date.now()-order.created_at)/1000));
-  await api('orders?id=eq.'+order.id,{method:'PATCH',body:JSON.stringify({status:'ready',done_at:Date.now(),encargado,marked_by:'cocina'})});
+  const doneAt=Date.now();
+  const updated=await api('orders?id=eq.'+order.id+'&status=eq.pending',{method:'PATCH',body:JSON.stringify({status:'ready',done_at:doneAt,encargado,marked_by:'cocina'})});
   const i=ordersArr.findIndex(o=>o.id===order.id);if(i>-1)ordersArr.splice(i,1);
   render();
+  if(!updated?.length)return;
+  // El historial es la fuente confiable del dashboard y se guarda primero.
+  const fecha=fechaLima();
+  await api('history',{method:'POST',body:JSON.stringify({id:'h_'+order.id,fecha,label:order.label,pan_id:order.pan_id,station:order.station,encargado,elapsed_sec:elapsed,done_at:doneAt}),prefer:'resolution=merge-duplicates'});
   if(order.station==='sopas')return;
   // Stats
   const statsArr=await api('stats?pan_id=eq.'+order.pan_id)||[];
   const cur=statsArr[0]?.count||0;
-  await api('stats',{method:'POST',body:JSON.stringify({pan_id:order.pan_id,count:cur+1}),headers:{'Prefer':'resolution=merge-duplicates'}});
+  await api('stats',{method:'POST',body:JSON.stringify({pan_id:order.pan_id,count:cur+cantidadPedido(order)}),headers:{'Prefer':'resolution=merge-duplicates'}});
   // Time stats
   const tsArr=await api('time_stats?pan_id=eq.'+order.pan_id)||[];
   const ts=tsArr[0]||{sum_sec:0,count:0,min_sec:null,max_sec:null};
@@ -917,9 +932,6 @@ async function marcarListo(order){
     const ss=ssArr[0]||{count:0,sum_sec:0};
     await api('staff_stats',{method:'POST',body:JSON.stringify({id:sk+'_'+order.station,staff_key:sk,station:order.station,nombre:encargado,count:(ss.count||0)+1,sum_sec:(ss.sum_sec||0)+elapsed}),headers:{'Prefer':'resolution=merge-duplicates'}});
   }
-  // History
-  const fecha=new Date().toISOString().slice(0,10);
-  await api('history',{method:'POST',body:JSON.stringify({id:'h_'+Date.now(),fecha,label:order.label,pan_id:order.pan_id,station:order.station,encargado,elapsed_sec:elapsed,done_at:Date.now()})});
 }
 
 // ---- Sync principal por polling + WebSocket como bono ----
@@ -948,6 +960,15 @@ async function pollOrders(){
   }catch(e){}
 }
 
+async function refreshTeamState(){
+  try{
+    const [cfgArr,turnoArr]=await Promise.all([api("config?key=eq.staff_list"),api('turno_actual?select=encargados')]);
+    if(cfgArr?.[0]?.value)STAFF=parseConfigValue(cfgArr[0].value,STAFF);
+    encargadosObj=turnoArr?.[0]?.encargados||{};
+    actualizarBadges();
+  }catch(e){}
+}
+
 async function init(){
   try{
     const cfgArr=await api("config?key=eq.staff_list")||[];
@@ -969,6 +990,8 @@ async function init(){
 
   // Polling cada 2 segundos — mecanismo principal
   setInterval(pollOrders, 2000);
+  // Mantiene sincronizadas las eliminaciones y asignaciones hechas desde Admin.
+  setInterval(refreshTeamState, 10000);
   // Recordatorios de jefe de cocina: una sola vez a los 5, 10 y 15 minutos.
   setInterval(revisarAvisosPorTiempo, 30000);
 

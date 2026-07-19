@@ -20,7 +20,8 @@ nav a{color:#caa86a;font-size:13px;text-decoration:none;border:1px solid #444;bo
 .turno-card .st-name{font-size:16px;font-weight:700;color:#fff}
 .staff-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
 .staff-card{background:#222;border-radius:12px;padding:14px 16px;border:1px solid #333}
-.staff-card .s-name{font-size:16px;font-weight:700;margin-bottom:10px;color:#fff}
+.s-name-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.staff-card .s-name{font-size:16px;font-weight:700;color:#fff}
+.staff-delete{width:30px;height:30px;border:1px solid #593535;border-radius:6px;background:#2b2020;color:#f08d75;cursor:pointer;flex-shrink:0}.staff-delete:hover{background:#442525}
 .s-station{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:#1a1a1a;border-radius:8px;margin-bottom:6px}
 .s-station .s-st-name{font-size:12px;color:#bbb}
 .s-count{font-size:15px;font-weight:700;color:#f0c450}
@@ -54,6 +55,14 @@ nav a{color:#caa86a;font-size:13px;text-decoration:none;border:1px solid #444;bo
 .hist-tabla td{padding:7px 10px;border-bottom:1px solid #1e1e1e;color:#ddd}
 input[type=date]{background:#222;border:1px solid #444;color:#fff;border-radius:8px;padding:8px 12px;font-size:14px}
 .hist-btn{background:#b53030;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:14px;cursor:pointer}
+.eff-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid #303030;border-bottom:1px solid #303030;margin-bottom:18px}
+.eff-kpi{padding:14px 16px;border-right:1px solid #303030;min-width:0}.eff-kpi:last-child{border-right:none}
+.eff-value{font-size:24px;font-weight:800;color:#fff;white-space:nowrap}.eff-label{font-size:11px;color:#888;margin-top:3px}.eff-note{font-size:11px;color:#777;margin-top:4px;min-height:14px}
+.trend-up{color:#6fcf97!important}.trend-down{color:#f08d75!important}.trend-flat{color:#f0c450!important}
+.eff-table-wrap{overflow-x:auto}.eff-table{width:100%;border-collapse:collapse;font-size:12px;min-width:680px}
+.eff-table th{text-align:left;color:#777;font-weight:600;padding:7px 9px;border-bottom:1px solid #333}.eff-table td{padding:9px;border-bottom:1px solid #242424;color:#ddd}
+.eff-table td.num{text-align:right;font-variant-numeric:tabular-nums}.eff-table th.num{text-align:right}.eff-product{font-weight:700;color:#fff}.eff-station{display:block;color:#777;font-size:10px;margin-top:2px}
+@media(max-width:760px){.eff-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.eff-kpi:nth-child(2){border-right:none}.eff-kpi:nth-child(-n+2){border-bottom:1px solid #303030}.hist-tabla{min-width:700px}.historial-scroll{overflow-x:auto}}
 </style>
 </head>
 <body>
@@ -62,6 +71,19 @@ input[type=date]{background:#222;border:1px solid #444;color:#fff;border-radius:
 <nav><a href="caja.html">🧾 Caja</a><a href="cocina.html">👨‍🍳 Cocina</a></nav>
 
 <div class="section"><h2>🕐 Turno actual</h2><div id="turnoInfo" class="turno-info"><div class="empty-state">Cargando...</div></div></div>
+<div class="section">
+  <h2>📈 Dashboard de eficiencia de hoy</h2>
+  <div class="eff-kpis">
+    <div class="eff-kpi"><div class="eff-value" id="effUnits">–</div><div class="eff-label">Platos y unidades preparados</div><div class="eff-note" id="effUnitsNote"></div></div>
+    <div class="eff-kpi"><div class="eff-value" id="effOrders">–</div><div class="eff-label">Comandas completadas</div><div class="eff-note">Cada pedido terminado cuenta una vez</div></div>
+    <div class="eff-kpi"><div class="eff-value" id="effAverage">–</div><div class="eff-label">Tiempo promedio</div><div class="eff-note" id="effAverageNote"></div></div>
+    <div class="eff-kpi"><div class="eff-value" id="effImprovement">–</div><div class="eff-label">Mejora frente a ayer</div><div class="eff-note" id="effImprovementNote"></div></div>
+  </div>
+  <div class="eff-table-wrap"><table class="eff-table">
+    <thead><tr><th>Plato</th><th class="num">Cantidad</th><th class="num">Comandas</th><th class="num">Promedio</th><th class="num">Mejor tiempo</th><th class="num">Frente a ayer</th></tr></thead>
+    <tbody id="efficiencyTable"><tr><td colspan="6" class="empty-state">Cargando...</td></tr></tbody>
+  </table></div>
+</div>
 <div class="section"><h2>👥 Rendimiento por encargado</h2><div id="staffGrid" class="staff-grid"><div class="empty-state">Sin datos aún.</div></div></div>
 <div class="section"><h2>🏆 Podio de eficiencia</h2><div id="podiumWrap" class="podium"><div class="empty-state">Sin datos suficientes.</div></div></div>
 <div class="section"><h2>📅 Historial por día</h2>
@@ -70,11 +92,11 @@ input[type=date]{background:#222;border:1px solid #444;color:#fff;border-radius:
     <button class="hist-btn" id="historialBtn">Ver día</button>
     <span id="historialMeta" style="color:#888;font-size:12px"></span>
   </div>
-  <div id="historialContent"><div class="empty-state">Selecciona una fecha.</div></div>
+  <div id="historialContent" class="historial-scroll"><div class="empty-state">Selecciona una fecha.</div></div>
 </div>
 <div class="section"><h2>📦 Productos más pedidos hoy</h2><div id="prodList" class="prod-list"><div class="empty-state">Sin datos aún.</div></div></div>
 <div class="section"><h2>⚙️ Gestión de personal</h2>
-  <p style="font-size:12px;color:#888;margin-bottom:12px">Estos nombres aparecen en el selector de encargados en Cocina. Los cambios se guardan al presionar "Guardar lista".</p>
+  <p style="font-size:12px;color:#888;margin-bottom:12px">Estos nombres aparecen en el selector de encargados en Cocina. Al eliminar una persona también se borran definitivamente su historial y su rendimiento.</p>
   <div class="staff-edit-row">
     <input id="newStaffInput" type="text" placeholder="Nombre del trabajador" maxlength="20">
     <button id="addStaffBtn">+ Agregar</button>
@@ -83,13 +105,13 @@ input[type=date]{background:#222;border:1px solid #444;color:#fff;border-radius:
   <button id="saveStaffBtn" style="background:#2e7d4f;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px">💾 Guardar lista</button>
   <div id="saveStaffMsg" style="font-size:12px;color:#2e7d4f;display:none;margin-bottom:8px">✅ Lista guardada correctamente</div>
   <br>
-  <button class="btn-danger" id="resetStaffStatsBtn">🗑 Reiniciar estadísticas de encargados</button>
+  <button class="btn-danger" id="resetStaffStatsBtn">🗑 Borrar estadísticas de hoy</button>
 </div>
 
 <script>
 const SB_URL='https://vjmnbzjtvuwqowxvknlu.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqbW5iemp0dnV3cW93eHZrbmx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMjg5OTYsImV4cCI6MjA5ODcwNDk5Nn0.Z3TNYCnOytTwNyWnCfSj5NtgyxHdPfB0_Rz9jv6Bdro';
-const STATION_LABELS={chaufero:'🍚 Chaufero',frituras:'🍤 Frituras',saltado:'🥘 Saltado'};
+const STATION_LABELS={chaufero:'🍚 Chaufero',frituras:'🍤 Frituras',saltado:'🥘 Saltado',sopas:'🍜 Sopas'};
 const STATION_LIST=['chaufero','frituras','saltado'];
 const DEFAULT_STAFF=['Eloy','Jefferson','Benjamin','Victor','Jeremy'];
 const $=id=>document.getElementById(id);
@@ -107,7 +129,9 @@ async function api(path,opts={}){
     },
     ...restOpts
   });
-  const txt=await res.text();return txt?JSON.parse(txt):null;
+  const txt=await res.text();
+  if(!res.ok)throw new Error(txt||('Error '+res.status));
+  return txt?JSON.parse(txt):null;
 }
 
 function formatTime(sec){if(!sec&&sec!==0)return'–';if(sec<60)return sec+'s';const m=Math.floor(sec/60),s=Math.round(sec%60);return m+'m'+(s>0?' '+s+'s':'');}
@@ -127,6 +151,87 @@ function esResponsableValido(nombre){
   return normalizado!==''&&normalizado!=='sin asignar'&&normalizado!=='sin asignacion';
 }
 
+function normalizarNombre(nombre){
+  return String(nombre||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+}
+
+function fechaLima(offsetDays=0){
+  return new Date(Date.now()-(5*60*60*1000)+(offsetDays*86400000)).toISOString().slice(0,10);
+}
+
+function rangoFechaLima(fecha){
+  const inicio=Date.parse(fecha+'T00:00:00-05:00');
+  return {inicio,fin:inicio+86400000};
+}
+
+async function historialDeFecha(fecha,orden='asc'){
+  const {inicio,fin}=rangoFechaLima(fecha);
+  const pedidos=await api('orders?status=eq.ready&done_at=gte.'+inicio+'&done_at=lt.'+fin+'&select=*&order=done_at.'+orden)||[];
+  if(pedidos.length){
+    return pedidos.map(p=>({...p,elapsed_sec:Math.max(0,Math.round(((Number(p.done_at)||0)-(Number(p.created_at)||Number(p.done_at)||0))/1000))}));
+  }
+  // Respaldo para instalaciones antiguas que hayan limpiado la tabla de pedidos.
+  return await api('history?done_at=gte.'+inicio+'&done_at=lt.'+fin+'&select=*&order=done_at.'+orden)||[];
+}
+
+function cantidadRegistro(registro){
+  if(!['p8','p12'].includes(registro.pan_id))return 1;
+  const match=String(registro.label||'').match(/^(\d+)\s+/);
+  return match?Math.max(1,parseInt(match[1],10)||1):1;
+}
+
+function escapeHtml(value){
+  return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+function resumirPorPlato(registros,panesArr){
+  const panesMap={};panesArr.forEach(p=>panesMap[p.id]=p);
+  const resumen={};
+  registros.forEach(r=>{
+    const key=r.pan_id||r.label;
+    if(!resumen[key])resumen[key]={key,label:panesMap[r.pan_id]?.label||r.label||'Sin nombre',station:r.station,units:0,orders:0,sumSec:0,minSec:null,maxSec:null};
+    const d=resumen[key],elapsed=Math.max(0,Number(r.elapsed_sec)||0);
+    d.units+=cantidadRegistro(r);d.orders+=1;d.sumSec+=elapsed;
+    d.minSec=d.minSec==null?elapsed:Math.min(d.minSec,elapsed);
+    d.maxSec=d.maxSec==null?elapsed:Math.max(d.maxSec,elapsed);
+  });
+  return Object.values(resumen).map(d=>({...d,avg:d.orders?Math.round(d.sumSec/d.orders):0}));
+}
+
+function mejoraPorcentual(actual,anterior){
+  if(actual==null||anterior==null||!Number.isFinite(Number(actual))||!(Number(anterior)>0))return null;
+  return Math.round(((Number(anterior)-Number(actual))/Number(anterior))*100);
+}
+
+function renderDashboard(registrosHoy,registrosAyer,panesArr){
+  const totalUnits=registrosHoy.reduce((sum,r)=>sum+cantidadRegistro(r),0);
+  const totalOrders=registrosHoy.length;
+  const avgHoy=totalOrders?Math.round(registrosHoy.reduce((sum,r)=>sum+(Number(r.elapsed_sec)||0),0)/totalOrders):null;
+  const avgAyer=registrosAyer.length?Math.round(registrosAyer.reduce((sum,r)=>sum+(Number(r.elapsed_sec)||0),0)/registrosAyer.length):null;
+  const enCinco=totalOrders?Math.round((registrosHoy.filter(r=>(Number(r.elapsed_sec)||0)<=300).length/totalOrders)*100):0;
+  const mejora=mejoraPorcentual(avgHoy,avgAyer);
+  $('effUnits').textContent=totalUnits;
+  $('effOrders').textContent=totalOrders;
+  $('effAverage').textContent=avgHoy==null?'–':formatTime(avgHoy);
+  $('effUnitsNote').textContent=totalUnits!==totalOrders?'Incluye cantidades múltiples':'Cantidad confirmada en el historial';
+  $('effAverageNote').textContent=totalOrders?enCinco+'% salió en 5 minutos o menos':'Sin comandas completadas';
+  const improvementEl=$('effImprovement');
+  improvementEl.className='eff-value '+(mejora==null?'':mejora>0?'trend-up':mejora<0?'trend-down':'trend-flat');
+  improvementEl.textContent=mejora==null?'–':(mejora>0?'+':'')+mejora+'%';
+  $('effImprovementNote').textContent=mejora==null?'Sin datos comparables de ayer':mejora>0?'El tiempo promedio bajó':mejora<0?'El tiempo promedio subió':'Mismo promedio que ayer';
+
+  const hoyPorPlato=resumirPorPlato(registrosHoy,panesArr).sort((a,b)=>b.units-a.units||a.avg-b.avg);
+  const ayerMap={};resumirPorPlato(registrosAyer,panesArr).forEach(d=>ayerMap[d.key]=d);
+  const tbody=$('efficiencyTable');
+  if(!hoyPorPlato.length){tbody.innerHTML='<tr><td colspan="6" class="empty-state">Sin platos completados hoy.</td></tr>';return;}
+  tbody.innerHTML=hoyPorPlato.map(d=>{
+    const cambio=mejoraPorcentual(d.avg,ayerMap[d.key]?.avg);
+    const cambioClass=cambio==null?'':cambio>0?'trend-up':cambio<0?'trend-down':'trend-flat';
+    const cambioText=cambio==null?'Sin dato':(cambio>0?'+':'')+cambio+'%';
+    return `<tr><td><span class="eff-product">${escapeHtml(d.label)}</span><span class="eff-station">${escapeHtml(STATION_LABELS[d.station]||d.station||'Sin estación')}</span></td><td class="num">${d.units}</td><td class="num">${d.orders}</td><td class="num">${formatTime(d.avg)}</td><td class="num">${formatTime(d.minSec)}</td><td class="num ${cambioClass}">${cambioText}</td></tr>`;
+  }).join('');
+}
+
 async function loadAll(){
   // Turno
   const turno=(await api('turno_actual?select=*')||[])[0];
@@ -139,13 +244,23 @@ async function loadAll(){
       STATION_LIST.map(st=>`<div class="turno-card ${st}"><div class="st-label">${STATION_LABELS[st]}</div><div class="st-name">${enc[st]||'Sin asignar'}</div></div>`).join('');
   }
 
-  // Staff stats
-  const ssArr=await api('staff_stats?select=*')||[];
+  const fechaHoy=fechaLima();
+  const [registrosHoy,registrosAyer,panesArr]=await Promise.all([
+    historialDeFecha(fechaHoy),
+    historialDeFecha(fechaLima(-1)),
+    api('panes?select=*').then(r=>r||[])
+  ]);
+  renderDashboard(registrosHoy,registrosAyer,panesArr);
+
+  // Rendimiento real del día, calculado desde el historial.
   const ssMap={};
-  ssArr.forEach(r=>{
-    if(!esResponsableValido(r.nombre))return;
-    if(!ssMap[r.staff_key])ssMap[r.staff_key]={nombre:r.nombre,stations:{}};
-    ssMap[r.staff_key].stations[r.station]=r;
+  registrosHoy.forEach(r=>{
+    if(!esResponsableValido(r.encargado))return;
+    const key=normalizarNombre(r.encargado),station=r.station||'saltado';
+    if(!ssMap[key])ssMap[key]={nombre:String(r.encargado).trim(),stations:{}};
+    if(!ssMap[key].stations[station])ssMap[key].stations[station]={count:0,sum_sec:0};
+    ssMap[key].stations[station].count+=1;
+    ssMap[key].stations[station].sum_sec+=Number(r.elapsed_sec)||0;
   });
   const staffGrid=$('staffGrid');staffGrid.innerHTML='';
   const entries=[];
@@ -163,7 +278,9 @@ async function loadAll(){
       const s=d.stations[st];const avg=s.count>0?Math.round(s.sum_sec/s.count):null;
       rows+=`<div class="s-station"><span class="s-st-name">${STATION_LABELS[st]}</span><div><div class="s-count">${s.count||0} 🍽</div><div class="s-avg">⏱ ${formatTime(avg)}</div></div></div>`;
     });
-    card.innerHTML=`<div class="s-name">#${index+1} 👤 ${d.nombre}</div>${rows}<div class="s-total">Promedio: ${formatTime(d.avg)} · Total: ${d.total} pedidos</div>`;
+    card.innerHTML=`<div class="s-name-row"><div class="s-name">#${index+1} 👤 ${escapeHtml(d.nombre)}</div></div>${rows}<div class="s-total">Promedio: ${formatTime(d.avg)} · Total: ${d.total} pedidos</div>`;
+    const deleteBtn=document.createElement('button');deleteBtn.className='staff-delete';deleteBtn.textContent='🗑';deleteBtn.title='Eliminar persona y todos sus datos';deleteBtn.onclick=()=>eliminarPersonal(d.nombre);
+    card.querySelector('.s-name-row').appendChild(deleteBtn);
     staffGrid.appendChild(card);
   });
   if(!entries.length)staffGrid.innerHTML='<div class="empty-state">Sin datos aún.</div>';
@@ -176,24 +293,18 @@ async function loadAll(){
       {icon:'🥇',label:'Más eficiente',entry:byAvg[0]},
       {icon:'🥈',label:'Segundo lugar',entry:byAvg[1]},
       {icon:'🥉',label:'Tercer lugar',entry:byAvg[2]}
-    ].forEach(m=>{if(!m.entry)return;const c=document.createElement('div');c.className='podium-card';c.innerHTML=`<div class="podium-icon">${m.icon}</div><div class="podium-name">${m.entry.nombre}</div><div class="podium-val">${m.label}</div><div class="podium-val" style="color:#f0c450">${formatTime(m.entry.avg)} promedio · ${m.entry.total} pedidos</div>`;pw.appendChild(c);});
+    ].forEach(m=>{if(!m.entry)return;const c=document.createElement('div');c.className='podium-card';c.innerHTML=`<div class="podium-icon">${m.icon}</div><div class="podium-name">${escapeHtml(m.entry.nombre)}</div><div class="podium-val">${m.label}</div><div class="podium-val" style="color:#f0c450">${formatTime(m.entry.avg)} promedio · ${m.entry.total} pedidos</div>`;pw.appendChild(c);});
   } else pw.innerHTML='<div class="empty-state">Sin datos suficientes.</div>';
 
-  // Productos
-  const statsArr=await api('stats?select=*')||[];
-  const tsArr=await api('time_stats?select=*')||[];
-  const panesArr=await api('panes?select=*')||[];
-  const tsMap={};tsArr.forEach(t=>tsMap[t.pan_id]=t);
-  const stMap={};statsArr.forEach(s=>stMap[s.pan_id]=s.count||0);
-  const withData=panesArr.filter(p=>stMap[p.id]>0).sort((a,b)=>(stMap[b.id]||0)-(stMap[a.id]||0));
+  // Conteo por producto desde el historial: una orden de 4 huevos cuenta como 4.
+  const productosHoy=resumirPorPlato(registrosHoy,panesArr).sort((a,b)=>b.units-a.units||a.avg-b.avg);
   const pl=$('prodList');pl.innerHTML='';
-  const max=stMap[withData[0]?.id]||1;
-  if(withData.length){
-    withData.forEach(p=>{
-      const count=stMap[p.id]||0;const t=tsMap[p.id];const avg=t&&t.count>0?Math.round(t.sum_sec/t.count):null;
-      const pct=Math.round((count/max)*100);
+  const max=productosHoy[0]?.units||1;
+  if(productosHoy.length){
+    productosHoy.forEach(p=>{
+      const pct=Math.round((p.units/max)*100);
       const row=document.createElement('div');row.className='prod-row';
-      row.innerHTML=`<div class="prod-name">${p.label}</div><div class="prod-bar-wrap"><div class="prod-bar" style="width:${pct}%"></div></div><div class="prod-count">${count}</div><div class="prod-avg">⏱ ${formatTime(avg)}</div>`;
+      row.innerHTML=`<div class="prod-name">${escapeHtml(p.label)}</div><div class="prod-bar-wrap"><div class="prod-bar" style="width:${pct}%"></div></div><div class="prod-count">${p.units}</div><div class="prod-avg">⏱ ${formatTime(p.avg)}</div>`;
       pl.appendChild(row);
     });
   } else pl.innerHTML='<div class="empty-state">Sin datos aún.</div>';
@@ -205,18 +316,22 @@ async function loadAll(){
 }
 
 // Historial
-const hoy=new Date().toISOString().slice(0,10);
+const hoy=fechaLima();
 $('historialDate').value=hoy;$('historialDate').max=hoy;
 $('historialBtn').onclick=cargarHistorial;
 async function cargarHistorial(){
   const fecha=$('historialDate').value;if(!fecha)return;
   $('historialContent').innerHTML='<div class="empty-state">Cargando...</div>';
-  const registros=await api('history?fecha=eq.'+fecha+'&select=*&order=done_at.asc')||[];
+  const registros=await historialDeFecha(fecha);
   if(!registros.length){$('historialContent').innerHTML='<div class="empty-state">Sin datos para este día.</div>';$('historialMeta').textContent='';return;}
   const total=registros.length;
   const avgSec=total>0?Math.round(registros.reduce((s,r)=>s+(r.elapsed_sec||0),0)/total):0;
   const encMap={},prodMap={};
-  registros.forEach(r=>{encMap[r.encargado||'Caja']=(encMap[r.encargado||'Caja']||0)+1;prodMap[r.label]=(prodMap[r.label]||0)+1;});
+  registros.forEach(r=>{
+    if(esResponsableValido(r.encargado))encMap[r.encargado]=(encMap[r.encargado]||0)+1;
+    const label=r.pan_id==='p8'?'Plátano':r.pan_id==='p12'?'Huevo':r.label;
+    prodMap[label]=(prodMap[label]||0)+cantidadRegistro(r);
+  });
   const topEnc=Object.entries(encMap).sort((a,b)=>b[1]-a[1])[0];
   const topProd=Object.entries(prodMap).sort((a,b)=>b[1]-a[1])[0];
   $('historialMeta').textContent=new Date(fecha+'T12:00:00').toLocaleDateString('es-PE',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
@@ -228,7 +343,7 @@ async function cargarHistorial(){
       <div class="hist-kpi"><div class="kval">${topEnc?topEnc[0]:'–'}</div><div class="klabel">Más activo (${topEnc?topEnc[1]:0})</div></div>
     </div>
     <table class="hist-tabla"><thead><tr><th>#</th><th>Plato</th><th>Estación</th><th>Encargado</th><th>Tiempo</th><th>Hora</th></tr></thead>
-    <tbody>${registros.map((r,i)=>`<tr><td>${i+1}</td><td>${r.label}</td><td>${STATION_LABELS[r.station]||r.station||'–'}</td><td>${r.encargado||'Caja'}</td><td>${formatTime(r.elapsed_sec)}</td><td>${r.done_at?new Date(r.done_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}):'–'}</td></tr>`).join('')}</tbody></table>`;
+    <tbody>${registros.map((r,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(r.label)}</td><td>${escapeHtml(STATION_LABELS[r.station]||r.station||'–')}</td><td>${escapeHtml(r.encargado||'Sin asignar')}</td><td>${formatTime(r.elapsed_sec)}</td><td>${r.done_at?new Date(r.done_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}):'–'}</td></tr>`).join('')}</tbody></table>`;
 }
 cargarHistorial();
 
@@ -263,37 +378,81 @@ $('addStaffBtn').onclick=()=>{
   staffList.push(n);renderStaffTags();$('newStaffInput').value='';
 };
 
+async function guardarListaPersonal(){
+  await api('config',{method:'POST',body:JSON.stringify({key:'staff_list',value:JSON.stringify(staffList)}),headers:{'Prefer':'resolution=merge-duplicates'}});
+}
+
+function mostrarMensajePersonal(texto,color='#2e7d4f'){
+  const msg=$('saveStaffMsg');msg.textContent=texto;msg.style.color=color;msg.style.display='block';
+}
+
 $('saveStaffBtn').onclick=async()=>{
   try{
-    await api('config',{method:'POST',body:JSON.stringify({key:'staff_list',value:JSON.stringify(staffList)}),headers:{'Prefer':'resolution=merge-duplicates'}});
-    const msg=$('saveStaffMsg');msg.style.display='block';setTimeout(()=>msg.style.display='none',3000);
+    await guardarListaPersonal();
+    mostrarMensajePersonal('✅ Lista guardada correctamente');setTimeout(()=>$('saveStaffMsg').style.display='none',3000);
   }catch(e){alert('Error al guardar: '+e.message);}
 };
 
-window.removeStaff=i=>{
-  if(!confirm('¿Eliminar a '+staffList[i]+'?'))return;
-  staffList.splice(i,1);renderStaffTags();
-};
-$('resetStaffStatsBtn').onclick=async()=>{
-  if(!confirm('¿Reiniciar TODAS las estadísticas? Esto borra contadores de productos, tiempos y encargados.'))return;
+async function limpiarAsignacionActual(nombre){
+  const turno=(await api('turno_actual?select=*')||[])[0];
+  if(!turno?.encargados)return;
+  let cambio=false;const encargados={...turno.encargados};
+  Object.keys(encargados).forEach(st=>{if(normalizarNombre(encargados[st])===normalizarNombre(nombre)){encargados[st]='';cambio=true;}});
+  if(cambio)await api('turno_actual?id=eq.1',{method:'PATCH',body:JSON.stringify({encargados}),prefer:'return=minimal'});
+}
+
+async function reconstruirAcumuladosHoy(){
+  const [registros,panesArr]=await Promise.all([historialDeFecha(fechaLima()),api('panes?select=*').then(r=>r||[])]);
+  const resumen={};resumirPorPlato(registros,panesArr).forEach(d=>resumen[d.key]=d);
+  await Promise.all(panesArr.map(p=>{
+    const d=resumen[p.id]||{units:0,orders:0,sumSec:0,minSec:null,maxSec:null};
+    return Promise.all([
+      api('stats',{method:'POST',body:JSON.stringify({pan_id:p.id,count:d.units}),prefer:'resolution=merge-duplicates'}),
+      api('time_stats',{method:'POST',body:JSON.stringify({pan_id:p.id,sum_sec:d.sumSec,count:d.orders,min_sec:d.minSec,max_sec:d.maxSec}),prefer:'resolution=merge-duplicates'})
+    ]);
+  }));
+}
+
+let eliminandoPersonal=false;
+async function eliminarPersonal(nombre){
+  if(eliminandoPersonal)return;
+  nombre=String(nombre||'').trim();if(!nombre)return;
+  if(!confirm('¿Eliminar definitivamente a '+nombre+'?\n\nTambién se borrarán todo su historial y sus datos de rendimiento. Esta acción no se puede deshacer.'))return;
+  eliminandoPersonal=true;mostrarMensajePersonal('Eliminando a '+nombre+' y sus datos…','#f0c450');
   try{
-    // Supabase necesita un filtro para DELETE — usamos id != '' para borrar todo
-    await api('staff_stats?id=neq.XXXXXXXX',{method:'DELETE',prefer:'return=minimal'});
-    await api('stats?pan_id=neq.XXXXXXXX',{method:'DELETE',prefer:'return=minimal'});
-    await api('time_stats?pan_id=neq.XXXXXXXX',{method:'DELETE',prefer:'return=minimal'});
-    alert('✅ Estadísticas reiniciadas correctamente');
-    loadAll();
+    const encoded=encodeURIComponent(nombre);
+    await Promise.all([
+      api('staff_stats?nombre=ilike.'+encoded,{method:'DELETE',prefer:'return=minimal'}),
+      api('history?encargado=ilike.'+encoded,{method:'DELETE',prefer:'return=minimal'}),
+      api('orders?status=eq.ready&encargado=ilike.'+encoded,{method:'DELETE',prefer:'return=minimal'})
+    ]);
+    const index=staffList.findIndex(n=>normalizarNombre(n)===normalizarNombre(nombre));
+    if(index>-1)staffList.splice(index,1);
+    await guardarListaPersonal();
+    await limpiarAsignacionActual(nombre);
+    await reconstruirAcumuladosHoy();
+    renderStaffTags();mostrarMensajePersonal('✅ '+nombre+' y todos sus datos fueron eliminados');
+    await loadAll();await cargarHistorial();
   }catch(e){
-    // Fallback: truncate via SQL-like approach usando UPDATE a 0
-    try{
-      const panesArr=await api('panes?select=id')||[];
-      for(const p of panesArr){
-        await api('stats',{method:'POST',body:JSON.stringify({pan_id:p.id,count:0}),prefer:'resolution=merge-duplicates'});
-        await api('time_stats',{method:'POST',body:JSON.stringify({pan_id:p.id,sum_sec:0,count:0,min_sec:null,max_sec:null}),prefer:'resolution=merge-duplicates'});
-      }
-      alert('✅ Contadores reiniciados a 0');
-      loadAll();
-    }catch(e2){alert('Error al reiniciar: '+e2.message);}
+    mostrarMensajePersonal('No se pudo completar la eliminación','#f08d75');
+    alert('Error al eliminar a '+nombre+': '+e.message);
+  }finally{eliminandoPersonal=false;}
+}
+window.removeStaff=i=>eliminarPersonal(staffList[i]);
+$('resetStaffStatsBtn').onclick=async()=>{
+  if(!confirm('¿Borrar definitivamente TODO el historial y rendimiento de hoy?\n\nLos días anteriores se conservarán.'))return;
+  try{
+    const {inicio,fin}=rangoFechaLima(fechaLima());
+    await Promise.all([
+      api('history?done_at=gte.'+inicio+'&done_at=lt.'+fin,{method:'DELETE',prefer:'return=minimal'}),
+      api('orders?status=eq.ready&done_at=gte.'+inicio+'&done_at=lt.'+fin,{method:'DELETE',prefer:'return=minimal'})
+    ]);
+    await api('staff_stats?id=neq.XXXXXXXX',{method:'DELETE',prefer:'return=minimal'});
+    await reconstruirAcumuladosHoy();
+    alert('✅ Las estadísticas de hoy fueron borradas');
+    await loadAll();await cargarHistorial();
+  }catch(e){
+    alert('Error al borrar las estadísticas: '+e.message);
   }
 };
 
