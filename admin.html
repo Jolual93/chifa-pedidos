@@ -62,7 +62,11 @@ input[type=date]{background:#222;border:1px solid #444;color:#fff;border-radius:
 .eff-table-wrap{overflow-x:auto}.eff-table{width:100%;border-collapse:collapse;font-size:12px;min-width:680px}
 .eff-table th{text-align:left;color:#777;font-weight:600;padding:7px 9px;border-bottom:1px solid #333}.eff-table td{padding:9px;border-bottom:1px solid #242424;color:#ddd}
 .eff-table td.num{text-align:right;font-variant-numeric:tabular-nums}.eff-table th.num{text-align:right}.eff-product{font-weight:700;color:#fff}.eff-station{display:block;color:#777;font-size:10px;margin-top:2px}
-@media(max-width:760px){.eff-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.eff-kpi:nth-child(2){border-right:none}.eff-kpi:nth-child(-n+2){border-bottom:1px solid #303030}.hist-tabla{min-width:700px}.historial-scroll{overflow-x:auto}}
+.period-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.period-tabs{display:inline-grid;grid-template-columns:repeat(4,1fr);border:1px solid #444;border-radius:7px;overflow:hidden}
+.period-btn{border:0;border-right:1px solid #444;background:#222;color:#aaa;padding:8px 15px;font-size:12px;font-weight:700;cursor:pointer;min-width:76px}.period-btn:last-child{border-right:0}.period-btn.active{background:#b53030;color:#fff}
+.period-meta{color:#aaa;font-size:12px;flex:1;min-width:180px}.record-delete{width:30px;height:30px;border:1px solid #593535;border-radius:6px;background:#2b2020;color:#f08d75;cursor:pointer}.record-delete:hover{background:#442525}
+.hist-tabla tr.outlier td{background:rgba(181,48,48,.09)}.outlier-label{display:inline-block;margin-left:6px;color:#f08d75;font-size:10px;font-weight:700}
+@media(max-width:760px){.eff-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.eff-kpi:nth-child(2){border-right:none}.eff-kpi:nth-child(-n+2){border-bottom:1px solid #303030}.hist-tabla{min-width:780px}.historial-scroll{overflow-x:auto}.period-tabs{width:100%}.period-btn{min-width:0;padding:8px 6px}.period-meta{width:100%}}
 </style>
 </head>
 <body>
@@ -72,29 +76,38 @@ input[type=date]{background:#222;border:1px solid #444;color:#fff;border-radius:
 
 <div class="section"><h2>🕐 Turno actual</h2><div id="turnoInfo" class="turno-info"><div class="empty-state">Cargando...</div></div></div>
 <div class="section">
-  <h2>📈 Dashboard de eficiencia de hoy</h2>
+  <h2>📅 Periodo de análisis</h2>
+  <div class="period-toolbar">
+    <div class="period-tabs" role="group" aria-label="Periodo de análisis">
+      <button class="period-btn active" data-period="day">Día</button>
+      <button class="period-btn" data-period="week">Semana</button>
+      <button class="period-btn" data-period="month">Mes</button>
+      <button class="period-btn" data-period="all">Histórico</button>
+    </div>
+    <input type="date" id="analysisDate">
+    <span class="period-meta" id="analysisMeta">Cargando...</span>
+  </div>
+</div>
+<div class="section">
+  <h2 id="dashboardTitle">📈 Dashboard de eficiencia</h2>
   <div class="eff-kpis">
     <div class="eff-kpi"><div class="eff-value" id="effUnits">–</div><div class="eff-label">Platos y unidades preparados</div><div class="eff-note" id="effUnitsNote"></div></div>
     <div class="eff-kpi"><div class="eff-value" id="effOrders">–</div><div class="eff-label">Comandas completadas</div><div class="eff-note">Cada pedido terminado cuenta una vez</div></div>
     <div class="eff-kpi"><div class="eff-value" id="effAverage">–</div><div class="eff-label">Tiempo promedio</div><div class="eff-note" id="effAverageNote"></div></div>
-    <div class="eff-kpi"><div class="eff-value" id="effImprovement">–</div><div class="eff-label">Mejora frente a ayer</div><div class="eff-note" id="effImprovementNote"></div></div>
+    <div class="eff-kpi"><div class="eff-value" id="effImprovement">–</div><div class="eff-label" id="effImprovementLabel">Mejora frente al periodo anterior</div><div class="eff-note" id="effImprovementNote"></div></div>
   </div>
   <div class="eff-table-wrap"><table class="eff-table">
-    <thead><tr><th>Plato</th><th class="num">Cantidad</th><th class="num">Comandas</th><th class="num">Promedio</th><th class="num">Mejor tiempo</th><th class="num">Frente a ayer</th></tr></thead>
+    <thead><tr><th>Plato</th><th class="num">Cantidad</th><th class="num">Comandas</th><th class="num">Promedio</th><th class="num">Mejor tiempo</th><th class="num" id="effCompareHeader">Periodo anterior</th></tr></thead>
     <tbody id="efficiencyTable"><tr><td colspan="6" class="empty-state">Cargando...</td></tr></tbody>
   </table></div>
 </div>
-<div class="section"><h2>👥 Rendimiento por encargado</h2><div id="staffGrid" class="staff-grid"><div class="empty-state">Sin datos aún.</div></div></div>
+<div class="section"><h2 id="rankingTitle">👥 Rendimiento por encargado</h2><div id="staffGrid" class="staff-grid"><div class="empty-state">Sin datos aún.</div></div></div>
 <div class="section"><h2>🏆 Podio de eficiencia</h2><div id="podiumWrap" class="podium"><div class="empty-state">Sin datos suficientes.</div></div></div>
-<div class="section"><h2>📅 Historial por día</h2>
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-    <input type="date" id="historialDate">
-    <button class="hist-btn" id="historialBtn">Ver día</button>
-    <span id="historialMeta" style="color:#888;font-size:12px"></span>
-  </div>
-  <div id="historialContent" class="historial-scroll"><div class="empty-state">Selecciona una fecha.</div></div>
+<div class="section"><h2>📋 Historial del periodo</h2>
+  <div id="historialMeta" style="color:#888;font-size:12px;margin-bottom:14px"></div>
+  <div id="historialContent" class="historial-scroll"><div class="empty-state">Cargando...</div></div>
 </div>
-<div class="section"><h2>📦 Productos más pedidos hoy</h2><div id="prodList" class="prod-list"><div class="empty-state">Sin datos aún.</div></div></div>
+<div class="section"><h2 id="productsTitle">📦 Productos más pedidos</h2><div id="prodList" class="prod-list"><div class="empty-state">Sin datos aún.</div></div></div>
 <div class="section"><h2>⚙️ Gestión de personal</h2>
   <p style="font-size:12px;color:#888;margin-bottom:12px">Estos nombres aparecen en el selector de encargados en Cocina. Al eliminar una persona también se borran definitivamente su historial y su rendimiento.</p>
   <div class="staff-edit-row">
@@ -116,6 +129,7 @@ const STATION_LIST=['chaufero','frituras','saltado'];
 const DEFAULT_STAFF=['Eloy','Jefferson','Benjamin','Victor','Jeremy'];
 const $=id=>document.getElementById(id);
 let staffList=[...DEFAULT_STAFF];
+let analysisPeriod='day',analysisDate=fechaLima(),currentRange=null,currentRecords=[],loadVersion=0,eliminandoRegistro=false;
 
 async function api(path,opts={}){
   const {headers:extraHeaders, prefer, ...restOpts} = opts;
@@ -164,14 +178,55 @@ function rangoFechaLima(fecha){
   return {inicio,fin:inicio+86400000};
 }
 
-async function historialDeFecha(fecha,orden='asc'){
+function formatDateRange(ms,options){
+  return new Date(ms).toLocaleDateString('es-PE',{timeZone:'America/Lima',...options});
+}
+
+function crearRango(periodo=analysisPeriod,fecha=analysisDate){
+  const dayMs=86400000,base=rangoFechaLima(fecha).inicio;
+  if(periodo==='all')return {mode:'all',inicio:null,fin:Date.now()+1,label:'Todo el historial',previous:null,comparisonLabel:'Histórico total',comparisonHeader:'Sin comparación'};
+  if(periodo==='week'){
+    const dayOfWeek=new Date(base).getUTCDay(),inicio=base-(((dayOfWeek+6)%7)*dayMs),fin=inicio+(7*dayMs);
+    const label='Semana del '+formatDateRange(inicio,{day:'numeric',month:'short'})+' al '+formatDateRange(fin-1,{day:'numeric',month:'short',year:'numeric'});
+    return {mode:'week',inicio,fin,label,previous:{inicio:inicio-(7*dayMs),fin:inicio},comparisonLabel:'Mejora frente a la semana anterior',comparisonHeader:'Semana anterior'};
+  }
+  if(periodo==='month'){
+    const [year,month]=fecha.split('-').map(Number);
+    const inicio=Date.parse(year+'-'+String(month).padStart(2,'0')+'-01T00:00:00-05:00');
+    const nextYear=month===12?year+1:year,nextMonth=month===12?1:month+1;
+    const fin=Date.parse(nextYear+'-'+String(nextMonth).padStart(2,'0')+'-01T00:00:00-05:00');
+    const prevYear=month===1?year-1:year,prevMonth=month===1?12:month-1;
+    const prevInicio=Date.parse(prevYear+'-'+String(prevMonth).padStart(2,'0')+'-01T00:00:00-05:00');
+    const label=formatDateRange(inicio,{month:'long',year:'numeric'});
+    return {mode:'month',inicio,fin,label:label.charAt(0).toUpperCase()+label.slice(1),previous:{inicio:prevInicio,fin:inicio},comparisonLabel:'Mejora frente al mes anterior',comparisonHeader:'Mes anterior'};
+  }
   const {inicio,fin}=rangoFechaLima(fecha);
-  const pedidos=await api('orders?status=eq.ready&done_at=gte.'+inicio+'&done_at=lt.'+fin+'&select=*&order=done_at.'+orden)||[];
+  const label=formatDateRange(inicio,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  return {mode:'day',inicio,fin,label:label.charAt(0).toUpperCase()+label.slice(1),previous:{inicio:inicio-dayMs,fin:inicio},comparisonLabel:'Mejora frente al día anterior',comparisonHeader:'Día anterior'};
+}
+
+async function apiPaginada(path){
+  const all=[];let offset=0;
+  while(true){
+    const rows=await api(path+'&limit=1000&offset='+offset)||[];
+    all.push(...rows);
+    if(rows.length<1000)break;
+    offset+=1000;
+    if(offset>=20000)break;
+  }
+  return all;
+}
+
+async function registrosDeRango(rango,orden='asc'){
+  const filtro=rango.inicio==null?'&done_at=not.is.null':'&done_at=gte.'+rango.inicio+'&done_at=lt.'+rango.fin;
+  const pedidos=await apiPaginada('orders?status=eq.ready'+filtro+'&select=*&order=done_at.'+orden);
   if(pedidos.length){
-    return pedidos.map(p=>({...p,elapsed_sec:Math.max(0,Math.round(((Number(p.done_at)||0)-(Number(p.created_at)||Number(p.done_at)||0))/1000))}));
+    return pedidos.map(p=>({...p,_source:'orders',elapsed_sec:Math.max(0,Math.round(((Number(p.done_at)||0)-(Number(p.created_at)||Number(p.done_at)||0))/1000))}));
   }
   // Respaldo para instalaciones antiguas que hayan limpiado la tabla de pedidos.
-  return await api('history?done_at=gte.'+inicio+'&done_at=lt.'+fin+'&select=*&order=done_at.'+orden)||[];
+  const historyFilter=rango.inicio==null?'?done_at=not.is.null':'?done_at=gte.'+rango.inicio+'&done_at=lt.'+rango.fin;
+  const history=await apiPaginada('history'+historyFilter+'&select=*&order=done_at.'+orden);
+  return history.map(r=>({...r,_source:'history'}));
 }
 
 function cantidadRegistro(registro){
@@ -203,36 +258,47 @@ function mejoraPorcentual(actual,anterior){
   return Math.round(((Number(anterior)-Number(actual))/Number(anterior))*100);
 }
 
-function renderDashboard(registrosHoy,registrosAyer,panesArr){
-  const totalUnits=registrosHoy.reduce((sum,r)=>sum+cantidadRegistro(r),0);
-  const totalOrders=registrosHoy.length;
-  const avgHoy=totalOrders?Math.round(registrosHoy.reduce((sum,r)=>sum+(Number(r.elapsed_sec)||0),0)/totalOrders):null;
-  const avgAyer=registrosAyer.length?Math.round(registrosAyer.reduce((sum,r)=>sum+(Number(r.elapsed_sec)||0),0)/registrosAyer.length):null;
-  const enCinco=totalOrders?Math.round((registrosHoy.filter(r=>(Number(r.elapsed_sec)||0)<=300).length/totalOrders)*100):0;
-  const mejora=mejoraPorcentual(avgHoy,avgAyer);
+function renderDashboard(registrosPeriodo,registrosAnterior,panesArr,rango){
+  const totalUnits=registrosPeriodo.reduce((sum,r)=>sum+cantidadRegistro(r),0);
+  const totalOrders=registrosPeriodo.length;
+  const avgPeriodo=totalOrders?Math.round(registrosPeriodo.reduce((sum,r)=>sum+(Number(r.elapsed_sec)||0),0)/totalOrders):null;
+  const avgAnterior=registrosAnterior.length?Math.round(registrosAnterior.reduce((sum,r)=>sum+(Number(r.elapsed_sec)||0),0)/registrosAnterior.length):null;
+  const enCinco=totalOrders?Math.round((registrosPeriodo.filter(r=>(Number(r.elapsed_sec)||0)<=300).length/totalOrders)*100):0;
+  const atipicos=registrosPeriodo.filter(r=>(Number(r.elapsed_sec)||0)>3600).length;
+  const mejora=rango.previous?mejoraPorcentual(avgPeriodo,avgAnterior):null;
+  $('dashboardTitle').textContent='📈 Dashboard de eficiencia · '+rango.label;
+  $('effImprovementLabel').textContent=rango.comparisonLabel;
+  $('effCompareHeader').textContent=rango.comparisonHeader;
   $('effUnits').textContent=totalUnits;
   $('effOrders').textContent=totalOrders;
-  $('effAverage').textContent=avgHoy==null?'–':formatTime(avgHoy);
+  $('effAverage').textContent=avgPeriodo==null?'–':formatTime(avgPeriodo);
   $('effUnitsNote').textContent=totalUnits!==totalOrders?'Incluye cantidades múltiples':'Cantidad confirmada en el historial';
-  $('effAverageNote').textContent=totalOrders?enCinco+'% salió en 5 minutos o menos':'Sin comandas completadas';
+  $('effAverageNote').textContent=totalOrders?enCinco+'% salió en 5 minutos o menos'+(atipicos?' · '+atipicos+' registro'+(atipicos===1?'':'s')+' para revisar':''):'Sin comandas completadas';
+  $('effAverageNote').className='eff-note'+(atipicos?' trend-down':'');
   const improvementEl=$('effImprovement');
   improvementEl.className='eff-value '+(mejora==null?'':mejora>0?'trend-up':mejora<0?'trend-down':'trend-flat');
   improvementEl.textContent=mejora==null?'–':(mejora>0?'+':'')+mejora+'%';
-  $('effImprovementNote').textContent=mejora==null?'Sin datos comparables de ayer':mejora>0?'El tiempo promedio bajó':mejora<0?'El tiempo promedio subió':'Mismo promedio que ayer';
+  $('effImprovementNote').textContent=!rango.previous?'El total histórico no se compara':mejora==null?'Sin datos comparables del periodo anterior':mejora>0?'El tiempo promedio bajó':mejora<0?'El tiempo promedio subió':'Mismo promedio que el periodo anterior';
 
-  const hoyPorPlato=resumirPorPlato(registrosHoy,panesArr).sort((a,b)=>b.units-a.units||a.avg-b.avg);
-  const ayerMap={};resumirPorPlato(registrosAyer,panesArr).forEach(d=>ayerMap[d.key]=d);
+  const periodoPorPlato=resumirPorPlato(registrosPeriodo,panesArr).sort((a,b)=>b.units-a.units||a.avg-b.avg);
+  const anteriorMap={};resumirPorPlato(registrosAnterior,panesArr).forEach(d=>anteriorMap[d.key]=d);
   const tbody=$('efficiencyTable');
-  if(!hoyPorPlato.length){tbody.innerHTML='<tr><td colspan="6" class="empty-state">Sin platos completados hoy.</td></tr>';return;}
-  tbody.innerHTML=hoyPorPlato.map(d=>{
-    const cambio=mejoraPorcentual(d.avg,ayerMap[d.key]?.avg);
+  if(!periodoPorPlato.length){tbody.innerHTML='<tr><td colspan="6" class="empty-state">Sin platos completados en este periodo.</td></tr>';return;}
+  tbody.innerHTML=periodoPorPlato.map(d=>{
+    const cambio=rango.previous?mejoraPorcentual(d.avg,anteriorMap[d.key]?.avg):null;
     const cambioClass=cambio==null?'':cambio>0?'trend-up':cambio<0?'trend-down':'trend-flat';
-    const cambioText=cambio==null?'Sin dato':(cambio>0?'+':'')+cambio+'%';
-    return `<tr><td><span class="eff-product">${escapeHtml(d.label)}</span><span class="eff-station">${escapeHtml(STATION_LABELS[d.station]||d.station||'Sin estación')}</span></td><td class="num">${d.units}</td><td class="num">${d.orders}</td><td class="num">${formatTime(d.avg)}</td><td class="num">${formatTime(d.minSec)}</td><td class="num ${cambioClass}">${cambioText}</td></tr>`;
+    const cambioText=!rango.previous?'–':cambio==null?'Sin dato':(cambio>0?'+':'')+cambio+'%';
+    const revisar=d.maxSec>3600?'<span class="outlier-label">REVISAR</span>':'';
+    return `<tr><td><span class="eff-product">${escapeHtml(d.label)}</span>${revisar}<span class="eff-station">${escapeHtml(STATION_LABELS[d.station]||d.station||'Sin estación')}</span></td><td class="num">${d.units}</td><td class="num">${d.orders}</td><td class="num">${formatTime(d.avg)}</td><td class="num">${formatTime(d.minSec)}</td><td class="num ${cambioClass}">${cambioText}</td></tr>`;
   }).join('');
 }
 
 async function loadAll(){
+  const version=++loadVersion,rango=crearRango();
+  currentRange=rango;
+  $('analysisMeta').textContent=rango.label;
+  $('rankingTitle').textContent='👥 Rendimiento por encargado · '+rango.label;
+  $('productsTitle').textContent='📦 Productos más pedidos · '+rango.label;
   // Turno
   const turno=(await api('turno_actual?select=*')||[])[0];
   const ti=$('turnoInfo');
@@ -244,17 +310,19 @@ async function loadAll(){
       STATION_LIST.map(st=>`<div class="turno-card ${st}"><div class="st-label">${STATION_LABELS[st]}</div><div class="st-name">${enc[st]||'Sin asignar'}</div></div>`).join('');
   }
 
-  const fechaHoy=fechaLima();
-  const [registrosHoy,registrosAyer,panesArr]=await Promise.all([
-    historialDeFecha(fechaHoy),
-    historialDeFecha(fechaLima(-1)),
+  const [registrosPeriodo,registrosAnterior,panesArr]=await Promise.all([
+    registrosDeRango(rango),
+    rango.previous?registrosDeRango(rango.previous):Promise.resolve([]),
     api('panes?select=*').then(r=>r||[])
   ]);
-  renderDashboard(registrosHoy,registrosAyer,panesArr);
+  if(version!==loadVersion)return;
+  currentRecords=registrosPeriodo;
+  renderDashboard(registrosPeriodo,registrosAnterior,panesArr,rango);
+  renderHistorial(registrosPeriodo,rango);
 
-  // Rendimiento real del día, calculado desde el historial.
+  // Rendimiento real del periodo, calculado desde los pedidos terminados.
   const ssMap={};
-  registrosHoy.forEach(r=>{
+  registrosPeriodo.forEach(r=>{
     if(!esResponsableValido(r.encargado))return;
     const key=normalizarNombre(r.encargado),station=r.station||'saltado';
     if(!ssMap[key])ssMap[key]={nombre:String(r.encargado).trim(),stations:{}};
@@ -297,11 +365,11 @@ async function loadAll(){
   } else pw.innerHTML='<div class="empty-state">Sin datos suficientes.</div>';
 
   // Conteo por producto desde el historial: una orden de 4 huevos cuenta como 4.
-  const productosHoy=resumirPorPlato(registrosHoy,panesArr).sort((a,b)=>b.units-a.units||a.avg-b.avg);
+  const productosPeriodo=resumirPorPlato(registrosPeriodo,panesArr).sort((a,b)=>b.units-a.units||a.avg-b.avg);
   const pl=$('prodList');pl.innerHTML='';
-  const max=productosHoy[0]?.units||1;
-  if(productosHoy.length){
-    productosHoy.forEach(p=>{
+  const max=productosPeriodo[0]?.units||1;
+  if(productosPeriodo.length){
+    productosPeriodo.forEach(p=>{
       const pct=Math.round((p.units/max)*100);
       const row=document.createElement('div');row.className='prod-row';
       row.innerHTML=`<div class="prod-name">${escapeHtml(p.label)}</div><div class="prod-bar-wrap"><div class="prod-bar" style="width:${pct}%"></div></div><div class="prod-count">${p.units}</div><div class="prod-avg">⏱ ${formatTime(p.avg)}</div>`;
@@ -315,15 +383,11 @@ async function loadAll(){
   renderStaffTags();
 }
 
-// Historial
-const hoy=fechaLima();
-$('historialDate').value=hoy;$('historialDate').max=hoy;
-$('historialBtn').onclick=cargarHistorial;
-async function cargarHistorial(){
-  const fecha=$('historialDate').value;if(!fecha)return;
-  $('historialContent').innerHTML='<div class="empty-state">Cargando...</div>';
-  const registros=await historialDeFecha(fecha);
-  if(!registros.length){$('historialContent').innerHTML='<div class="empty-state">Sin datos para este día.</div>';$('historialMeta').textContent='';return;}
+// Historial del periodo y corrección de registros individuales.
+function renderHistorial(registros,rango){
+  const atipicos=registros.filter(r=>(Number(r.elapsed_sec)||0)>3600).length;
+  $('historialMeta').textContent=rango.label+' · '+registros.length+' comanda'+(registros.length===1?'':'s')+(atipicos?' · '+atipicos+' registro'+(atipicos===1?'':'s')+' para revisar':'');
+  if(!registros.length){$('historialContent').innerHTML='<div class="empty-state">Sin datos para este periodo.</div>';return;}
   const total=registros.length;
   const avgSec=total>0?Math.round(registros.reduce((s,r)=>s+(r.elapsed_sec||0),0)/total):0;
   const encMap={},prodMap={};
@@ -334,7 +398,6 @@ async function cargarHistorial(){
   });
   const topEnc=Object.entries(encMap).sort((a,b)=>b[1]-a[1])[0];
   const topProd=Object.entries(prodMap).sort((a,b)=>b[1]-a[1])[0];
-  $('historialMeta').textContent=new Date(fecha+'T12:00:00').toLocaleDateString('es-PE',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   $('historialContent').innerHTML=`
     <div class="hist-resumen">
       <div class="hist-kpi"><div class="kval">${total}</div><div class="klabel">Pedidos completados</div></div>
@@ -342,10 +405,46 @@ async function cargarHistorial(){
       <div class="hist-kpi"><div class="kval">${topProd?topProd[0]:'–'}</div><div class="klabel">Plato más pedido (${topProd?topProd[1]:0})</div></div>
       <div class="hist-kpi"><div class="kval">${topEnc?topEnc[0]:'–'}</div><div class="klabel">Más activo (${topEnc?topEnc[1]:0})</div></div>
     </div>
-    <table class="hist-tabla"><thead><tr><th>#</th><th>Plato</th><th>Estación</th><th>Encargado</th><th>Tiempo</th><th>Hora</th></tr></thead>
-    <tbody>${registros.map((r,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(r.label)}</td><td>${escapeHtml(STATION_LABELS[r.station]||r.station||'–')}</td><td>${escapeHtml(r.encargado||'Sin asignar')}</td><td>${formatTime(r.elapsed_sec)}</td><td>${r.done_at?new Date(r.done_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}):'–'}</td></tr>`).join('')}</tbody></table>`;
+    <table class="hist-tabla"><thead><tr><th>#</th><th>Plato</th><th>Estación</th><th>Encargado</th><th>Tiempo</th><th>Fecha</th><th>Hora</th><th></th></tr></thead>
+    <tbody>${registros.map((r,i)=>{
+      const atipico=(Number(r.elapsed_sec)||0)>3600;
+      const fecha=r.done_at?new Date(r.done_at).toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'2-digit'}):'–';
+      const hora=r.done_at?new Date(r.done_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}):'–';
+      return `<tr class="${atipico?'outlier':''}"><td>${i+1}</td><td>${escapeHtml(r.label)}</td><td>${escapeHtml(STATION_LABELS[r.station]||r.station||'–')}</td><td>${escapeHtml(r.encargado||'Sin asignar')}</td><td>${formatTime(r.elapsed_sec)}${atipico?'<span class="outlier-label">REVISAR</span>':''}</td><td>${fecha}</td><td>${hora}</td><td><button class="record-delete" data-index="${i}" title="Eliminar solo este registro">🗑</button></td></tr>`;
+    }).join('')}</tbody></table>`;
+  $('historialContent').querySelectorAll('.record-delete').forEach(btn=>{btn.onclick=()=>eliminarRegistro(Number(btn.dataset.index));});
 }
-cargarHistorial();
+
+async function eliminarRegistro(index){
+  if(eliminandoRegistro)return;
+  const registro=currentRecords[index];if(!registro)return;
+  const momento=registro.done_at?new Date(registro.done_at).toLocaleString('es-PE'):'sin fecha';
+  if(!confirm('¿Eliminar solamente este registro?\n\n'+registro.label+' · '+formatTime(registro.elapsed_sec)+' · '+momento+'\n\nEl dashboard y el ranking se recalcularán. Esta acción no se puede deshacer.'))return;
+  eliminandoRegistro=true;
+  try{
+    if(registro._source==='orders'){
+      const tasks=[api('orders?id=eq.'+encodeURIComponent(registro.id),{method:'DELETE',prefer:'return=minimal'})];
+      tasks.push(api('history?id=eq.'+encodeURIComponent('h_'+registro.id),{method:'DELETE',prefer:'return=minimal'}));
+      if(registro.pan_id&&registro.done_at)tasks.push(api('history?pan_id=eq.'+encodeURIComponent(registro.pan_id)+'&done_at=eq.'+registro.done_at,{method:'DELETE',prefer:'return=minimal'}));
+      await Promise.all(tasks);
+    }else{
+      await api('history?id=eq.'+encodeURIComponent(registro.id),{method:'DELETE',prefer:'return=minimal'});
+    }
+    await reconstruirAcumuladosHoy();
+    await loadAll();
+  }catch(e){alert('No se pudo eliminar el registro: '+e.message);}
+  finally{eliminandoRegistro=false;}
+}
+
+function actualizarControlesPeriodo(){
+  document.querySelectorAll('.period-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.period===analysisPeriod));
+  $('analysisDate').style.display=analysisPeriod==='all'?'none':'';
+}
+
+$('analysisDate').value=analysisDate;$('analysisDate').max=fechaLima();
+$('analysisDate').onchange=()=>{analysisDate=$('analysisDate').value||fechaLima();loadAll();};
+document.querySelectorAll('.period-btn').forEach(btn=>{btn.onclick=()=>{analysisPeriod=btn.dataset.period;actualizarControlesPeriodo();loadAll();};});
+actualizarControlesPeriodo();
 
 // Personal
 function renderStaffTags(){
@@ -402,7 +501,7 @@ async function limpiarAsignacionActual(nombre){
 }
 
 async function reconstruirAcumuladosHoy(){
-  const [registros,panesArr]=await Promise.all([historialDeFecha(fechaLima()),api('panes?select=*').then(r=>r||[])]);
+  const [registros,panesArr]=await Promise.all([registrosDeRango(crearRango('day',fechaLima())),api('panes?select=*').then(r=>r||[])]);
   const resumen={};resumirPorPlato(registros,panesArr).forEach(d=>resumen[d.key]=d);
   await Promise.all(panesArr.map(p=>{
     const d=resumen[p.id]||{units:0,orders:0,sumSec:0,minSec:null,maxSec:null};
@@ -432,7 +531,7 @@ async function eliminarPersonal(nombre){
     await limpiarAsignacionActual(nombre);
     await reconstruirAcumuladosHoy();
     renderStaffTags();mostrarMensajePersonal('✅ '+nombre+' y todos sus datos fueron eliminados');
-    await loadAll();await cargarHistorial();
+    await loadAll();
   }catch(e){
     mostrarMensajePersonal('No se pudo completar la eliminación','#f08d75');
     alert('Error al eliminar a '+nombre+': '+e.message);
@@ -450,7 +549,7 @@ $('resetStaffStatsBtn').onclick=async()=>{
     await api('staff_stats?id=neq.XXXXXXXX',{method:'DELETE',prefer:'return=minimal'});
     await reconstruirAcumuladosHoy();
     alert('✅ Las estadísticas de hoy fueron borradas');
-    await loadAll();await cargarHistorial();
+    await loadAll();
   }catch(e){
     alert('Error al borrar las estadísticas: '+e.message);
   }
