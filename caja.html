@@ -73,6 +73,19 @@ h1{font-size:20px;margin:0 0 4px}.sub{color:#999;font-size:13px;margin-bottom:10
 .sopa-item .si-name{flex:1;font-size:13px;color:#eee;font-weight:600}
 .sopa-item .si-time{font-size:11px;color:#888}
 .sopa-item .si-listo{background:#2e7d4f;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer}
+/* Vida útil en távola */
+.food-life-wrap{margin-top:18px;width:100%;max-width:900px;border-top:1px solid #444;padding-top:16px}
+.food-life-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.food-life-head h3{margin:0;font-size:15px;color:#ddd}.food-life-head p{margin:3px 0 0;font-size:11px;color:#888}
+.food-life-badge{background:#2e7d4f;color:#fff;border-radius:12px;padding:3px 9px;font-size:11px;font-weight:800}
+.food-life-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px}
+.life-card{background:#1e1e1e;border:1px solid #3c3c3c;border-left:4px solid #2e7d4f;border-radius:8px;padding:10px}
+.life-card.warning{border-left-color:#f0c450;background:#241f14}.life-card.expired{border-left-color:#b53030;background:#271717}
+.life-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.life-name{font-size:14px;font-weight:800;color:#fff}.life-state{font-size:10px;font-weight:800;color:#6fcf97;text-transform:uppercase}
+.life-card.warning .life-state{color:#f0c450}.life-card.expired .life-state{color:#f08d75}
+.life-clock{font-size:25px;font-weight:900;color:#fff;margin:7px 0 2px;font-variant-numeric:tabular-nums}.life-meta{font-size:10px;color:#888}
+.life-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px}.life-actions button{border:1px solid #4d4d4d;border-radius:6px;background:#292929;color:#ddd;padding:7px 5px;font-size:11px;font-weight:700;cursor:pointer}.life-actions .discard{border-color:#633838;color:#f08d75}
+.life-empty{color:#666;font-size:12px;padding:8px 0}
 /* Stats */
 .stats-modal{width:min(900px,92vw);max-height:88vh;padding:22px 24px;display:flex;flex-direction:column}
 .stats-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
@@ -115,6 +128,13 @@ h1{font-size:20px;margin:0 0 4px}.sub{color:#999;font-size:13px;margin-bottom:10
   </div>
   <div class="sopa-queue" id="sopaQueue"><div style="color:#555;font-size:12px">Sin sopas pendientes</div></div>
 </div>
+<section class="food-life-wrap">
+  <div class="food-life-head">
+    <div><h3>🌡️ Vida útil en távola</h3><p>El tiempo comienza automáticamente cuando Caja o Cocina marca Listo.</p></div>
+    <span class="food-life-badge" id="foodLifeBadge">0 activos</span>
+  </div>
+  <div class="food-life-list" id="foodLifeList"><div class="life-empty">Sin productos activos en távola.</div></div>
+</section>
 <div class="toast-wrap" id="toastWrap"></div>
 
 <div class="modal-bg" id="statsModalBg">
@@ -194,6 +214,7 @@ const DEFAULT_PANES=[
 const STATION_META={chaufero:{label:'🍚 Chaufero',cls:'chaufero'},frituras:{label:'🍤 Frituras',cls:'frituras'},saltado:{label:'🥘 Saltado',cls:'saltado'}};
 const STATION_ORDER=['chaufero','frituras','saltado'];
 const QUANTITY_PRODUCT_IDS=new Set(['p8','p12']);
+const DEFAULT_FOOD_LIFE={p1:30,p2:30,p3:40,p4:60,p5:40,p6:40,p7:40,p8:10,p9:30,p10:40,p11:40,p12:10,p13:30,p14:10,p15:30,p16:60,p17:360};
 const $=id=>document.getElementById(id);
 
 async function api(path,opts={}){
@@ -208,6 +229,7 @@ async function api(path,opts={}){
 }
 
 let panes=[],ordersArr=[],sopasArr=[],statsObj={},timeStatsObj={},panEstados={},turnoEncargados={};
+let foodLifeConfig={...DEFAULT_FOOD_LIFE},foodLifeTimers=[],foodLifeWritePending=0,foodLifeSaveChain=Promise.resolve();
 let quantityProduct=null;
 let lastHash='';
 let lastPanStatusHash='';
@@ -220,6 +242,141 @@ function cantidadPedido(order){
   if(!['p8','p12'].includes(order.pan_id))return 1;
   const match=String(order.label||'').match(/^(\d+)\s+/);
   return match?Math.max(1,parseInt(match[1],10)||1):1;
+}
+
+function parseConfigValue(value,fallback){
+  let parsed=value;
+  for(let i=0;i<2&&typeof parsed==='string';i++){
+    try{parsed=JSON.parse(parsed);}catch(e){return fallback;}
+  }
+  return parsed&&typeof parsed==='object'?parsed:fallback;
+}
+function normalizarVidaUtilConfig(value){
+  const result={};
+  Object.entries(value&&typeof value==='object'&&!Array.isArray(value)?value:{}).forEach(([id,minutos])=>{
+    if(id.startsWith('_'))return;
+    result[id]=Math.max(0,Math.min(720,Math.round(Number(minutos)||0)));
+  });
+  return result;
+}
+function normalizarFoodLifeTimers(value){
+  if(!Array.isArray(value))return [];
+  const timers=value.map((timer,index)=>({
+    id:String(timer.id||('timer_'+Date.now()+'_'+index)),
+    pan_id:String(timer.pan_id||''),
+    label:String(timer.label||'Producto'),
+    quantity:Math.max(1,Math.min(99,Math.round(Number(timer.quantity)||1))),
+    started_at:Number(timer.started_at)||Date.now(),
+    duration_min:Math.max(1,Math.min(720,Math.round(Number(timer.duration_min)||10))),
+    source_order_id:String(timer.source_order_id||''),
+    warning_announced:timer.warning_announced===true,
+    expired_announced:timer.expired_announced===true
+  })).filter(timer=>timer.pan_id);
+  const latest={};
+  timers.forEach(timer=>{if(!latest[timer.pan_id]||timer.started_at>=latest[timer.pan_id].started_at)latest[timer.pan_id]=timer;});
+  return Object.values(latest);
+}
+async function loadFoodLifeState(){
+  const rows=await api("config?key=in.(food_life_config,prepared_food_batches)&select=*")||[];
+  const lifeRow=rows.find(row=>row.key==='food_life_config');
+  const timersRow=rows.find(row=>row.key==='prepared_food_batches');
+  const raw=lifeRow?parseConfigValue(lifeRow.value,{}):{};
+  const saved=normalizarVidaUtilConfig(raw);
+  foodLifeConfig=Number(raw?._version)>=2?saved:{...DEFAULT_FOOD_LIFE,...saved};
+  foodLifeTimers=normalizarFoodLifeTimers(parseConfigValue(timersRow?.value,[]));
+  renderFoodLifeTimers();
+}
+async function refreshFoodLifeState(){
+  if(foodLifeWritePending)return;
+  try{await loadFoodLifeState();}catch(e){}
+}
+function saveFoodLifeTimers(){
+  const value=JSON.stringify(foodLifeTimers);
+  foodLifeWritePending++;
+  const task=foodLifeSaveChain.catch(()=>{}).then(()=>api('config',{
+    method:'POST',
+    body:JSON.stringify({key:'prepared_food_batches',value}),
+    prefer:'resolution=merge-duplicates'
+  }));
+  foodLifeSaveChain=task.catch(()=>{}).finally(()=>{foodLifeWritePending=Math.max(0,foodLifeWritePending-1);});
+  return task;
+}
+function estadoFoodLife(timer,now=Date.now()){
+  const durationMs=timer.duration_min*60000;
+  const remainingMs=(timer.started_at+durationMs)-now;
+  const warningMs=Math.min(120000,Math.max(30000,durationMs*.2));
+  return {remainingMs,state:remainingMs<=0?'expired':remainingMs<=warningMs?'warning':'fresh'};
+}
+function formatoFoodLife(ms){
+  const seconds=Math.ceil(Math.abs(ms)/1000),minutes=Math.floor(seconds/60),rest=seconds%60;
+  return String(minutes).padStart(2,'0')+':'+String(rest).padStart(2,'0');
+}
+function nombreFoodLife(timer){
+  if(timer.quantity<=1)return timer.label;
+  if(timer.pan_id==='p8')return timer.quantity+' Plátanos';
+  if(timer.pan_id==='p12')return timer.quantity+' Huevos';
+  return timer.quantity+' '+timer.label;
+}
+function renderFoodLifeTimers(){
+  const list=$('foodLifeList');if(!list)return;
+  list.innerHTML='';
+  foodLifeTimers.slice().sort((a,b)=>a.started_at-b.started_at).forEach(timer=>{
+    const status=estadoFoodLife(timer);
+    const card=document.createElement('div');card.className='life-card '+status.state;
+    const top=document.createElement('div');top.className='life-top';
+    const stateLabel=status.state==='fresh'?'Vigente':status.state==='warning'?'Por vencer':'Vencido';
+    top.innerHTML='<div class="life-name">'+nombreFoodLife(timer)+'</div><div class="life-state">'+stateLabel+'</div>';
+    const clock=document.createElement('div');clock.className='life-clock';
+    clock.textContent=status.state==='expired'?'Venció '+formatoFoodLife(status.remainingMs):formatoFoodLife(status.remainingMs);
+    const meta=document.createElement('div');meta.className='life-meta';
+    meta.textContent='Listo '+new Date(timer.started_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})+' · límite '+timer.duration_min+' min';
+    const actions=document.createElement('div');actions.className='life-actions';
+    const finished=document.createElement('button');finished.textContent='✓ Se acabó';finished.onclick=()=>retirarFoodLifeTimer(timer.id,false);
+    const discard=document.createElement('button');discard.className='discard';discard.textContent='🗑 Descartar';discard.onclick=()=>retirarFoodLifeTimer(timer.id,true);
+    actions.append(finished,discard);card.append(top,clock,meta,actions);list.appendChild(card);
+  });
+  if(!foodLifeTimers.length)list.innerHTML='<div class="life-empty">Sin productos activos en távola.</div>';
+  $('foodLifeBadge').textContent=foodLifeTimers.length+' activo'+(foodLifeTimers.length===1?'':'s');
+}
+async function iniciarFoodLifeDesdePedido(order,doneAt){
+  await foodLifeSaveChain.catch(()=>{});
+  try{await loadFoodLifeState();}catch(e){}
+  const duration=Number(foodLifeConfig[order.pan_id])||0;
+  const product=panes.find(p=>p.id===order.pan_id);
+  if(!product||duration<=0)return;
+  const timer={
+    id:'t_'+order.id,
+    pan_id:order.pan_id,
+    label:product.label,
+    quantity:cantidadPedido(order),
+    started_at:doneAt,
+    duration_min:duration,
+    source_order_id:order.id,
+    warning_announced:false,
+    expired_announced:false
+  };
+  foodLifeTimers=foodLifeTimers.filter(item=>item.pan_id!==order.pan_id);
+  foodLifeTimers.push(timer);renderFoodLifeTimers();
+  await saveFoodLifeTimers();
+}
+async function registrarFoodWaste(timer){
+  const rows=await api("config?key=eq.food_waste_log")||[];
+  const parsed=parseConfigValue(rows?.[0]?.value,[]);
+  const history=Array.isArray(parsed)?parsed:[];
+  history.push({id:'d_'+Date.now(),batch_id:timer.id,pan_id:timer.pan_id,label:timer.label,quantity:timer.quantity,started_at:timer.started_at,discarded_at:Date.now(),expired:estadoFoodLife(timer).state==='expired'});
+  await api('config',{method:'POST',body:JSON.stringify({key:'food_waste_log',value:JSON.stringify(history.slice(-500))}),prefer:'resolution=merge-duplicates'});
+}
+async function retirarFoodLifeTimer(id,discard){
+  await foodLifeSaveChain.catch(()=>{});
+  try{await loadFoodLifeState();}catch(e){}
+  const timer=foodLifeTimers.find(item=>item.id===id);if(!timer)return;
+  if(discard&&!confirm('¿Registrar '+nombreFoodLife(timer)+' como producto descartado?'))return;
+  foodLifeTimers=foodLifeTimers.filter(item=>item.id!==id);renderFoodLifeTimers();
+  try{
+    if(discard)await registrarFoodWaste(timer);
+    await saveFoodLifeTimers();
+    showToast(discard?'Descarte registrado':'Producto retirado de la távola',discard?'#7a1d1d':'#2e7d4f');
+  }catch(e){showToast('No se pudo actualizar la távola','#b53030');}
 }
 
 async function autoResetDiario(){
@@ -434,6 +591,7 @@ async function marcarListoCaja(order){
   const i=ordersArr.findIndex(o=>o.id===order.id);if(i>-1)ordersArr.splice(i,1);
   renderCola();render();
   if(!updated?.length){showToast('El pedido ya había sido marcado Listo','#777');return;}
+  await iniciarFoodLifeDesdePedido(order,doneAt).catch(()=>showToast('El pedido salió, pero no se pudo iniciar su tiempo en távola','#b53030'));
   const fecha=fechaLima();
   await api('history',{method:'POST',body:JSON.stringify({id:'h_'+order.id,fecha,label:order.label,pan_id:order.pan_id,station:order.station,encargado,elapsed_sec:elapsed,done_at:doneAt}),prefer:'resolution=merge-duplicates'});
   const cantidad=cantidadPedido(order);
@@ -558,10 +716,13 @@ async function init(){
     timeStatsObj={};tsArr.forEach(s=>timeStatsObj[s.pan_id]=s);
     panEstados=await loadSharedProductStatus();
     lastPanStatusHash=JSON.stringify(panEstados);
+    await loadFoodLifeState().catch(()=>{foodLifeConfig={...DEFAULT_FOOD_LIFE};foodLifeTimers=[];});
   }catch(e){console.error(e);}
-  render();renderCola();renderSopas();
+  render();renderCola();renderSopas();renderFoodLifeTimers();
   setInterval(pollCaja,2000);
   setInterval(refreshPanEstados,2000);
+  setInterval(refreshFoodLifeState,2000);
+  setInterval(renderFoodLifeTimers,1000);
   setInterval(refreshTurnoEncargados,10000);
 }
 init();
