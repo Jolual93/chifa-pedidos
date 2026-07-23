@@ -24,21 +24,6 @@ h1{font-size:22px;margin:0 0 4px}
 .station.sopas{width:100%;border-color:#2e5a8e;background:#141d27}
 .station.sopas .card{color:#fff;border-color:#5f9ed5}
 .station.sopas .card .time{color:#d7e9fa}
-.freshness-section{width:100%;max-width:1300px;margin-top:16px;border-top:1px solid #3a3a3a;padding-top:16px}
-.freshness-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
-.freshness-head h2{margin:0;font-size:16px;color:#ddd}.freshness-head p{margin:3px 0 0;color:#888;font-size:11px}
-.freshness-badge{background:#2e7d4f;color:#fff;border-radius:14px;padding:3px 10px;font-size:12px;font-weight:800}
-.freshness-products,.freshness-batches{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}
-.freshness-products{margin-bottom:10px}.fresh-product,.fresh-batch{background:#1a1a1a;border:1px solid #3d3d3d;border-radius:8px;padding:10px}
-.fresh-product{display:grid;grid-template-columns:minmax(80px,1fr) auto auto;gap:10px;align-items:center}
-.fresh-product-name{font-size:13px;font-weight:700;color:#fff}.fresh-product-life{font-size:11px;color:#6fcf97;margin-top:2px}
-.fresh-qty{display:grid;grid-template-columns:30px 34px 30px;align-items:center;gap:3px}.fresh-qty button{height:30px;border:1px solid #555;border-radius:5px;background:#292929;color:#fff;font-size:16px;cursor:pointer}.fresh-qty span{text-align:center;font-weight:800}
-.fresh-start{height:34px;border:0;border-radius:6px;background:#2e7d4f;color:#fff;padding:0 10px;font-size:12px;font-weight:700;cursor:pointer}
-.fresh-batch{border-left:4px solid #2e7d4f}.fresh-batch.warning{border-left-color:#f0c450;background:#201d14}.fresh-batch.expired{border-left-color:#b53030;background:#241616}
-.fresh-batch-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.fresh-batch-name{font-size:14px;font-weight:800}.fresh-batch-state{font-size:10px;font-weight:800;text-transform:uppercase;color:#6fcf97}.fresh-batch.warning .fresh-batch-state{color:#f0c450}.fresh-batch.expired .fresh-batch-state{color:#f08d75}
-.fresh-countdown{font-size:24px;font-weight:900;color:#fff;margin:8px 0 2px;font-variant-numeric:tabular-nums}.fresh-batch-meta{font-size:11px;color:#888}
-.fresh-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:9px}.fresh-actions button{border:1px solid #4a4a4a;border-radius:5px;background:#292929;color:#ddd;padding:6px 4px;font-size:11px;cursor:pointer}.fresh-actions .discard{color:#f08d75;border-color:#633838}
-.fresh-empty{color:#666;font-size:12px;padding:8px 0}
 .scount{background:#444;border-radius:14px;padding:2px 10px;font-size:13px}
 .encargado-badge{font-size:11px;background:rgba(255,255,255,.12);border-radius:12px;padding:2px 8px;color:#eee;cursor:pointer}
 .encargado-badge:hover{background:rgba(255,255,255,.22)}
@@ -93,7 +78,7 @@ h1{font-size:22px;margin:0 0 4px}
 .sim-reset{margin-top:10px;border:1px solid #555;border-radius:6px;background:#292929;color:#bbb;padding:7px 10px;font-size:12px;cursor:pointer}
 .sim-section.sim-wide{grid-column:1/-1}.sim-fresh-buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .sim-msg{min-height:18px;margin-top:12px;color:#aaa;font-size:12px}.sim-error{color:#f08d75;font-size:12px;min-height:18px;margin-top:6px}
-@media(max-width:680px){.sim-grid{grid-template-columns:1fr}.sim-time-buttons{grid-template-columns:repeat(2,1fr)}.sim-section.sim-wide{grid-column:auto}.fresh-product{grid-template-columns:1fr auto}.fresh-start{grid-column:1/-1}.freshness-products,.freshness-batches{grid-template-columns:1fr}}
+@media(max-width:680px){.sim-grid{grid-template-columns:1fr}.sim-time-buttons{grid-template-columns:repeat(2,1fr)}.sim-section.sim-wide{grid-column:auto}}
 .status-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:410;display:none;align-items:center;justify-content:center}
 .status-modal-bg.show{display:flex}
 .status-modal{background:#1e1e1e;border-radius:14px;padding:18px;width:min(620px,92vw);max-height:86vh;overflow:auto;border:1px solid #444;color:#eee}
@@ -170,7 +155,7 @@ h1{font-size:22px;margin:0 0 4px}
         <h4>Platos y tiempos</h4>
         <div class="sim-field"><label>Responsable</label><select id="simResponsible"></select></div>
         <div class="sim-field"><label>Plato</label><select id="simProduct"></select></div>
-        <div class="sim-field"><label>Cantidad</label><input type="number" id="simQuantity" min="1" max="99" value="1"></div>
+        <div class="sim-field" id="simQuantityField"><label>Cantidad</label><input type="number" id="simQuantity" min="1" max="99" value="1"></div>
         <div class="sim-time-buttons">
           <button class="sim-action sim-level" data-level="nuevo">Nuevo</button>
           <button class="sim-action sim-level" data-level="min5">5 min</button>
@@ -193,6 +178,7 @@ h1{font-size:22px;margin:0 0 4px}
       <div class="sim-section sim-wide">
         <h4>Vida útil de comida preparada</h4>
         <div class="sim-field"><label>Producto</label><select id="simFreshProduct"></select></div>
+        <div class="sim-field" id="simFreshQuantityField"><label>Cantidad</label><input type="number" id="simFreshQuantity" min="1" max="99" value="1"></div>
         <div class="sim-fresh-buttons">
           <button class="sim-action sim-fresh-level" data-level="fresh">Fresco</button>
           <button class="sim-action sim-fresh-level" data-level="warning">Por vencer</button>
@@ -263,14 +249,6 @@ h1{font-size:22px;margin:0 0 4px}
     <div class="empty" id="empty-sopas" style="display:none">Sin sopas pendientes 🎉</div>
   </div>
 </div>
-<section class="freshness-section">
-  <div class="freshness-head">
-    <div><h2>🌡️ Vida útil de comida preparada</h2><p>El tiempo comienza al marcar una tanda como lista.</p></div>
-    <span class="freshness-badge" id="freshnessBadge">0 disponibles</span>
-  </div>
-  <div class="freshness-products" id="freshnessProducts"></div>
-  <div class="freshness-batches" id="freshnessBatches"><div class="fresh-empty">Sin tandas activas.</div></div>
-</section>
 
 <script>
 const SB_URL='https://vjmnbzjtvuwqowxvknlu.supabase.co';
@@ -290,6 +268,7 @@ const DEFAULT_PRODUCTS=[
 ];
 const SOUP_PRODUCTS=[{id:'sopa_p',label:'Sopa pequeña',station:'sopas',isSoup:true},{id:'sopa_g',label:'Sopa 1 litro',station:'sopas',isSoup:true}];
 const STATUS_LABELS={demora:'Va a demorar',agotado:'Agotado'};
+const DEFAULT_FOOD_LIFE={p1:30,p2:30,p3:40,p4:60,p5:40,p6:40,p7:40,p8:10,p9:30,p10:40,p11:40,p12:10,p13:30,p14:10,p15:30,p16:60,p17:360};
 let STAFF=['Eloy','Jefferson','Benjamin','Victor','Jeremy'];
 const $=id=>document.getElementById(id);
 
@@ -306,8 +285,9 @@ const voiceTabId=(window.crypto&&window.crypto.randomUUID)?window.crypto.randomU
 let voiceTabActive=false;
 let encargadosObj={}, wakeLock=null;
 let productStatusObj={}, productosArr=[];
-let foodLifeConfig={p12:10},preparedFoodBatches=[],freshQuantities={};
+let foodLifeConfig={...DEFAULT_FOOD_LIFE},preparedFoodBatches=[];
 let foodLifeWritePending=0,foodLifeSaveChain=Promise.resolve();
+let foodLifeAlertChecking=false;
 let voiceRate=parseFloat(localStorage.getItem('voiceRate_v1'))||1.0;
 let speechChain=Promise.resolve();
 let popupQueue=[],popupWin=null;
@@ -985,39 +965,40 @@ $('closeStatusBtn').onclick=()=>$('statusModalBg').classList.remove('show');
 function normalizarVidaUtilConfig(value){
   const result={};
   Object.entries(value&&typeof value==='object'&&!Array.isArray(value)?value:{}).forEach(([id,minutos])=>{
-    const n=Math.max(0,Math.min(240,Math.round(Number(minutos)||0)));
-    if(n>0)result[id]=n;
+    if(id.startsWith('_'))return;
+    result[id]=Math.max(0,Math.min(720,Math.round(Number(minutos)||0)));
   });
   return result;
 }
 function normalizarTandas(value){
   if(!Array.isArray(value))return [];
-  return value.map((batch,index)=>({
+  const batches=value.map((batch,index)=>({
     id:String(batch.id||('tanda_'+Date.now()+'_'+index)),
     pan_id:String(batch.pan_id||''),
     label:String(batch.label||'Producto'),
     quantity:Math.max(1,Math.min(99,Math.round(Number(batch.quantity)||1))),
     started_at:Number(batch.started_at)||Date.now(),
-    duration_min:Math.max(1,Math.min(240,Math.round(Number(batch.duration_min)||10))),
+    duration_min:Math.max(1,Math.min(720,Math.round(Number(batch.duration_min)||10))),
+    source_order_id:String(batch.source_order_id||''),
     warning_announced:batch.warning_announced===true,
     expired_announced:batch.expired_announced===true
   })).filter(batch=>batch.pan_id);
+  const latest={};
+  batches.forEach(batch=>{if(!latest[batch.pan_id]||batch.started_at>=latest[batch.pan_id].started_at)latest[batch.pan_id]=batch;});
+  return Object.values(latest);
 }
 async function loadFoodLifeState(){
   const rows=await api("config?key=in.(food_life_config,prepared_food_batches)&select=*")||[];
   const lifeRow=rows.find(row=>row.key==='food_life_config');
   const batchRow=rows.find(row=>row.key==='prepared_food_batches');
-  foodLifeConfig=lifeRow?normalizarVidaUtilConfig(parseConfigValue(lifeRow.value,{})):{p12:10};
+  const raw=lifeRow?parseConfigValue(lifeRow.value,{}):{};
+  const saved=normalizarVidaUtilConfig(raw);
+  foodLifeConfig=Number(raw?._version)>=2?saved:{...DEFAULT_FOOD_LIFE,...saved};
   preparedFoodBatches=normalizarTandas(parseConfigValue(batchRow?.value,[]));
-  renderFreshness();
 }
 async function refreshFoodLifeState(){
   if(foodLifeWritePending)return;
-  try{
-    const before=JSON.stringify([foodLifeConfig,preparedFoodBatches]);
-    await loadFoodLifeState();
-    if(JSON.stringify([foodLifeConfig,preparedFoodBatches])!==before)renderFreshness();
-  }catch(e){}
+  try{await loadFoodLifeState();}catch(e){}
 }
 function savePreparedFoodBatches(){
   const value=JSON.stringify(preparedFoodBatches);
@@ -1046,111 +1027,59 @@ function estadoTanda(batch,now=Date.now()){
   const warningMs=Math.min(120000,Math.max(30000,durationMs*.2));
   return {remainingMs,warningMs,state:remainingMs<=0?'expired':remainingMs<=warningMs?'warning':'fresh'};
 }
-function formatoCuentaRegresiva(ms){
-  const seconds=Math.ceil(Math.abs(ms)/1000),minutes=Math.floor(seconds/60),rest=seconds%60;
-  return String(minutes).padStart(2,'0')+':'+String(rest).padStart(2,'0');
-}
-function renderFreshnessControls(){
-  const wrap=$('freshnessProducts');wrap.innerHTML='';
-  const products=productosArr.filter(p=>!p.isSoup&&(foodLifeConfig[p.id]||0)>0);
-  if(!products.length){wrap.innerHTML='<div class="fresh-empty">Configura los minutos de vida útil desde Administración.</div>';return;}
-  products.forEach(product=>{
-    const quantity=freshQuantities[product.id]||1;
-    const row=document.createElement('div');row.className='fresh-product';
-    const info=document.createElement('div');info.innerHTML='<div class="fresh-product-name">'+product.label+'</div><div class="fresh-product-life">'+foodLifeConfig[product.id]+' min de vida útil</div>';
-    const qty=document.createElement('div');qty.className='fresh-qty';
-    const minus=document.createElement('button');minus.textContent='−';minus.title='Restar unidad';
-    const count=document.createElement('span');count.textContent=quantity;
-    const plus=document.createElement('button');plus.textContent='+';plus.title='Agregar unidad';
-    minus.onclick=()=>{freshQuantities[product.id]=Math.max(1,quantity-1);renderFreshnessControls();};
-    plus.onclick=()=>{freshQuantities[product.id]=Math.min(99,quantity+1);renderFreshnessControls();};
-    qty.append(minus,count,plus);
-    const start=document.createElement('button');start.className='fresh-start';start.textContent='✓ Tanda lista';start.onclick=()=>iniciarTanda(product.id);
-    row.append(info,qty,start);wrap.appendChild(row);
-  });
-}
-function renderFreshnessBatches(){
-  const wrap=$('freshnessBatches');wrap.innerHTML='';
-  let disponibles=0;
-  preparedFoodBatches.slice().sort((a,b)=>a.started_at-b.started_at).forEach(batch=>{
-    const status=estadoTanda(batch);
-    if(status.state!=='expired')disponibles+=batch.quantity;
-    const product=productoVida(batch.pan_id);
-    const card=document.createElement('div');card.className='fresh-batch '+status.state;
-    const stateLabel=status.state==='fresh'?'Fresco':status.state==='warning'?'Por vencer':'Vencido';
-    const quantityLabel=batch.quantity>1?batch.quantity+' '+pluralizarPrimerNombre(singularizarProducto(batch.label)):batch.label;
-    const top=document.createElement('div');top.className='fresh-batch-top';
-    top.innerHTML='<div class="fresh-batch-name">'+quantityLabel+'</div><div class="fresh-batch-state">'+stateLabel+'</div>';
-    const countdown=document.createElement('div');countdown.className='fresh-countdown';
-    countdown.textContent=status.state==='expired'?'Venció '+formatoCuentaRegresiva(status.remainingMs):formatoCuentaRegresiva(status.remainingMs);
-    const meta=document.createElement('div');meta.className='fresh-batch-meta';
-    meta.textContent='Inició '+new Date(batch.started_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})+' · límite '+batch.duration_min+' min';
-    const actions=document.createElement('div');actions.className='fresh-actions';
-    const used=document.createElement('button');used.textContent='✓ Consumida';used.onclick=()=>retirarTanda(batch.id,false);
-    const renew=document.createElement('button');renew.textContent='↻ Renovar';renew.onclick=()=>renovarTanda(batch.id);
-    const discard=document.createElement('button');discard.className='discard';discard.textContent='🗑 Descartar';discard.onclick=()=>retirarTanda(batch.id,true);
-    actions.append(used,renew,discard);card.append(top,countdown,meta,actions);wrap.appendChild(card);
-  });
-  if(!preparedFoodBatches.length)wrap.innerHTML='<div class="fresh-empty">Sin tandas activas.</div>';
-  $('freshnessBadge').textContent=disponibles+' disponible'+(disponibles===1?'':'s');
-}
-function renderFreshness(){renderFreshnessControls();renderFreshnessBatches();}
-async function iniciarTanda(productId){
-  const product=productoVida(productId),duration=foodLifeConfig[productId];if(!product||!duration)return;
-  const quantity=freshQuantities[productId]||1;
-  preparedFoodBatches.push({
-    id:'t_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
-    pan_id:product.id,label:product.label,quantity,started_at:Date.now(),duration_min:duration,
-    warning_announced:false,expired_announced:false
-  });
-  freshQuantities[productId]=1;renderFreshness();
-  try{await savePreparedFoodBatches();}catch(e){alert('No se pudo guardar la tanda: '+e.message);}
-}
-async function renovarTanda(id){
-  const batch=preparedFoodBatches.find(item=>item.id===id);if(!batch)return;
-  batch.started_at=Date.now();batch.duration_min=foodLifeConfig[batch.pan_id]||batch.duration_min;
-  batch.warning_announced=false;batch.expired_announced=false;renderFreshnessBatches();
-  try{await savePreparedFoodBatches();}catch(e){alert('No se pudo renovar la tanda: '+e.message);}
-}
-async function registrarDescarte(batch){
-  const rows=await api("config?key=eq.food_waste_log")||[];
-  const log=parseConfigValue(rows?.[0]?.value,[]);
-  const history=Array.isArray(log)?log:[];
-  history.push({id:'d_'+Date.now(),batch_id:batch.id,pan_id:batch.pan_id,label:batch.label,quantity:batch.quantity,started_at:batch.started_at,discarded_at:Date.now(),expired:estadoTanda(batch).state==='expired'});
-  await api('config',{method:'POST',body:JSON.stringify({key:'food_waste_log',value:JSON.stringify(history.slice(-500))}),prefer:'resolution=merge-duplicates'});
-}
-async function retirarTanda(id,discard){
-  const batch=preparedFoodBatches.find(item=>item.id===id);if(!batch)return;
-  if(discard&&!confirm('¿Registrar esta tanda como descartada?'))return;
-  preparedFoodBatches=preparedFoodBatches.filter(item=>item.id!==id);renderFreshnessBatches();
-  try{
-    if(discard)await registrarDescarte(batch);
-    await savePreparedFoodBatches();
-  }catch(e){alert('No se pudo actualizar la tanda: '+e.message);}
+async function iniciarVidaUtilDesdePedido(order,doneAt){
+  await foodLifeSaveChain.catch(()=>{});
+  try{await loadFoodLifeState();}catch(e){}
+  const duration=Number(foodLifeConfig[order.pan_id])||0;
+  const product=productoVida(order.pan_id);
+  if(!product||product.isSoup||duration<=0)return;
+  const batch={
+    id:'t_'+order.id,
+    pan_id:order.pan_id,
+    label:product.label,
+    quantity:cantidadPedido(order),
+    started_at:doneAt,
+    duration_min:duration,
+    source_order_id:order.id,
+    warning_announced:false,
+    expired_announced:false
+  };
+  preparedFoodBatches=preparedFoodBatches.filter(item=>item.pan_id!==order.pan_id);
+  preparedFoodBatches.push(batch);
+  await savePreparedFoodBatches();
 }
 function textoAlertaVidaUtil(batch,level){
   const product=productoVida(batch.pan_id);
-  const descripcion=cantidadDescripcionProducto(batch.quantity,batch.label,product?.art);
-  if(level==='fresh')return 'La tanda de '+descripcion+' está fresca. Tiene una vida útil de '+cantidadVoz(batch.duration_min,'m')+' minuto'+(batch.duration_min===1?'':'s')+'.';
+  const descripcion=batch.quantity>1?cantidadDescripcionProducto(batch.quantity,batch.label,product?.art):batch.label;
+  if(level==='fresh')return 'El tiempo de vida de '+descripcion+' es de '+cantidadVoz(batch.duration_min,'m')+' minuto'+(batch.duration_min===1?'':'s')+'.';
   if(level==='warning'){
     const warningMinutes=Math.max(1,Math.round(estadoTanda(batch).warningMs/60000));
-    return 'Atención. A la tanda de '+descripcion+' le quedan '+cantidadVoz(warningMinutes,'m')+' minuto'+(warningMinutes===1?'':'s')+' de vida útil.';
+    return 'Atención. El tiempo de vida de '+descripcion+' termina en '+cantidadVoz(warningMinutes,'m')+' minuto'+(warningMinutes===1?'':'s')+'.';
   }
-  return 'Atención cocina. La tanda de '+descripcion+' llegó a su tiempo límite. Retírenla ahora.';
+  return 'Atención. El tiempo de vida de '+descripcion+' terminó. Caja, retirar el producto de la távola.';
 }
-function revisarAlertasVidaUtil(){
-  renderFreshnessBatches();
-  if(!preparedFoodBatches.length||!voiceDeviceAllowed||!soundOn||!elevenKey||!elevenVoiceId||!canThisTabSpeak())return;
-  let changed=false;
-  preparedFoodBatches.forEach(batch=>{
-    const status=estadoTanda(batch);
-    if(status.state==='expired'&&!batch.expired_announced){
-      batch.expired_announced=true;changed=true;encolarTexto(textoAlertaVidaUtil(batch,'expired'));
-    }else if(status.state==='warning'&&!batch.warning_announced){
-      batch.warning_announced=true;changed=true;encolarTexto(textoAlertaVidaUtil(batch,'warning'));
-    }
+async function revisarAlertasVidaUtil(){
+  if(!preparedFoodBatches.length||!voiceDeviceAllowed||!soundOn||!elevenKey||!elevenVoiceId)return;
+  const needsAlert=preparedFoodBatches.some(batch=>{
+    const state=estadoTanda(batch).state;
+    return (state==='expired'&&!batch.expired_announced)||(state==='warning'&&!batch.warning_announced);
   });
-  if(changed)savePreparedFoodBatches().catch(()=>{});
+  if(!needsAlert||foodLifeAlertChecking)return;
+  foodLifeAlertChecking=true;
+  try{
+    try{await loadFoodLifeState();}catch(e){}
+    if(!canThisTabSpeak())return;
+    let changed=false;
+    preparedFoodBatches.forEach(batch=>{
+      const status=estadoTanda(batch);
+      if(status.state==='expired'&&!batch.expired_announced){
+        batch.expired_announced=true;changed=true;encolarTexto(textoAlertaVidaUtil(batch,'expired'));
+      }else if(status.state==='warning'&&!batch.warning_announced){
+        batch.warning_announced=true;changed=true;encolarTexto(textoAlertaVidaUtil(batch,'warning'));
+      }
+    });
+    if(changed)await savePreparedFoodBatches().catch(()=>{});
+  }finally{foodLifeAlertChecking=false;}
 }
 
 // ---- Modo simulación: solo reproduce voz, nunca crea pedidos ----
@@ -1168,6 +1097,15 @@ function buildSimulationOptions(){
   let freshOptions=productosArr.filter(p=>!p.isSoup&&(foodLifeConfig[p.id]||0)>0);
   if(!freshOptions.length)freshOptions=productosArr.filter(p=>!p.isSoup);
   freshOptions.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.label+' · '+(foodLifeConfig[p.id]||10)+' min';freshProduct.appendChild(o);});
+  product.onchange=syncSimulationQuantityFields;
+  freshProduct.onchange=syncSimulationQuantityFields;
+  syncSimulationQuantityFields();
+}
+function syncSimulationQuantityFields(){
+  $('simQuantityField').style.display=['p8','p12'].includes($('simProduct').value)?'block':'none';
+  $('simFreshQuantityField').style.display=['p8','p12'].includes($('simFreshProduct').value)?'block':'none';
+  if($('simQuantityField').style.display==='none')$('simQuantity').value=1;
+  if($('simFreshQuantityField').style.display==='none')$('simFreshQuantity').value=1;
 }
 function openSimulation(){buildSimulationOptions();$('simModalBg').classList.add('show');setSimMessage('Las pruebas no crean pedidos ni estadísticas.');}
 function requestSimulation(){
@@ -1186,8 +1124,7 @@ function queueSimulationText(text){
 function simulateDishLevel(level){
   const product=productosArr.find(p=>p.id===$('simProduct').value);if(!product)return;
   const responsable=$('simResponsible').value;
-  const quantity=Math.max(1,Math.min(99,Math.round(Number($('simQuantity').value)||1)));
-  $('simQuantity').value=quantity;
+  const quantity=['p8','p12'].includes(product.id)?Math.max(1,Math.min(99,Math.round(Number($('simQuantity').value)||1))):1;
   const art=quantity===1?(product.art||SIM_ARTICLES[product.id]||'un'):'';
   const label=quantity===1?product.label:quantity+' '+pluralizarPrimerNombre(singularizarProducto(product.label));
   queueSimulationText(fraseAleatoria(art,label,level,product.station,responsable));
@@ -1204,7 +1141,7 @@ function changeSimSoup(type,delta,announce){
 }
 function simulateFreshnessLevel(level){
   const product=productosArr.find(p=>p.id===$('simFreshProduct').value);if(!product)return;
-  const quantity=Math.max(1,Math.min(99,Math.round(Number($('simQuantity').value)||1)));
+  const quantity=['p8','p12'].includes(product.id)?Math.max(1,Math.min(99,Math.round(Number($('simFreshQuantity').value)||1))):1;
   const batch={pan_id:product.id,label:product.label,quantity,started_at:Date.now(),duration_min:foodLifeConfig[product.id]||10};
   queueSimulationText(textoAlertaVidaUtil(batch,level));
 }
@@ -1262,6 +1199,7 @@ async function marcarListo(order){
   const i=ordersArr.findIndex(o=>o.id===order.id);if(i>-1)ordersArr.splice(i,1);
   render();
   if(!updated?.length)return;
+  await iniciarVidaUtilDesdePedido(order,doneAt).catch(()=>{});
   // El historial es la fuente confiable del dashboard y se guarda primero.
   const fecha=fechaLima();
   await api('history',{method:'POST',body:JSON.stringify({id:'h_'+order.id,fecha,label:order.label,pan_id:order.pan_id,station:order.station,encargado,elapsed_sec:elapsed,done_at:doneAt}),prefer:'resolution=merge-duplicates'});
@@ -1325,7 +1263,7 @@ async function init(){
     await loadProducts();
     await Promise.all([
       loadProductStatus(),
-      loadFoodLifeState().catch(()=>{foodLifeConfig={p12:10};preparedFoodBatches=[];renderFreshness();})
+      loadFoodLifeState().catch(()=>{foodLifeConfig={...DEFAULT_FOOD_LIFE};preparedFoodBatches=[];})
     ]);
     const turnoArr=await api('turno_actual?select=*')||[];
     if(turnoArr[0]?.encargados){
