@@ -24,6 +24,21 @@ h1{font-size:22px;margin:0 0 4px}
 .station.sopas{width:100%;border-color:#2e5a8e;background:#141d27}
 .station.sopas .card{color:#fff;border-color:#5f9ed5}
 .station.sopas .card .time{color:#d7e9fa}
+.freshness-section{width:100%;max-width:1300px;margin-top:16px;border-top:1px solid #3a3a3a;padding-top:16px}
+.freshness-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.freshness-head h2{margin:0;font-size:16px;color:#ddd}.freshness-head p{margin:3px 0 0;color:#888;font-size:11px}
+.freshness-badge{background:#2e7d4f;color:#fff;border-radius:14px;padding:3px 10px;font-size:12px;font-weight:800}
+.freshness-products,.freshness-batches{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}
+.freshness-products{margin-bottom:10px}.fresh-product,.fresh-batch{background:#1a1a1a;border:1px solid #3d3d3d;border-radius:8px;padding:10px}
+.fresh-product{display:grid;grid-template-columns:minmax(80px,1fr) auto auto;gap:10px;align-items:center}
+.fresh-product-name{font-size:13px;font-weight:700;color:#fff}.fresh-product-life{font-size:11px;color:#6fcf97;margin-top:2px}
+.fresh-qty{display:grid;grid-template-columns:30px 34px 30px;align-items:center;gap:3px}.fresh-qty button{height:30px;border:1px solid #555;border-radius:5px;background:#292929;color:#fff;font-size:16px;cursor:pointer}.fresh-qty span{text-align:center;font-weight:800}
+.fresh-start{height:34px;border:0;border-radius:6px;background:#2e7d4f;color:#fff;padding:0 10px;font-size:12px;font-weight:700;cursor:pointer}
+.fresh-batch{border-left:4px solid #2e7d4f}.fresh-batch.warning{border-left-color:#f0c450;background:#201d14}.fresh-batch.expired{border-left-color:#b53030;background:#241616}
+.fresh-batch-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.fresh-batch-name{font-size:14px;font-weight:800}.fresh-batch-state{font-size:10px;font-weight:800;text-transform:uppercase;color:#6fcf97}.fresh-batch.warning .fresh-batch-state{color:#f0c450}.fresh-batch.expired .fresh-batch-state{color:#f08d75}
+.fresh-countdown{font-size:24px;font-weight:900;color:#fff;margin:8px 0 2px;font-variant-numeric:tabular-nums}.fresh-batch-meta{font-size:11px;color:#888}
+.fresh-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:9px}.fresh-actions button{border:1px solid #4a4a4a;border-radius:5px;background:#292929;color:#ddd;padding:6px 4px;font-size:11px;cursor:pointer}.fresh-actions .discard{color:#f08d75;border-color:#633838}
+.fresh-empty{color:#666;font-size:12px;padding:8px 0}
 .scount{background:#444;border-radius:14px;padding:2px 10px;font-size:13px}
 .encargado-badge{font-size:11px;background:rgba(255,255,255,.12);border-radius:12px;padding:2px 8px;color:#eee;cursor:pointer}
 .encargado-badge:hover{background:rgba(255,255,255,.22)}
@@ -76,8 +91,9 @@ h1{font-size:22px;margin:0 0 4px}
 .sim-soup-row{display:grid;grid-template-columns:1fr 38px 44px 38px;align-items:center;gap:6px;margin-bottom:8px}.sim-soup-row span:first-child{font-size:13px}.sim-count{text-align:center;font-size:18px;font-weight:800;color:#fff}
 .sim-step{height:34px;border:1px solid #555;border-radius:6px;background:#292929;color:#fff;font-size:18px;cursor:pointer}
 .sim-reset{margin-top:10px;border:1px solid #555;border-radius:6px;background:#292929;color:#bbb;padding:7px 10px;font-size:12px;cursor:pointer}
+.sim-section.sim-wide{grid-column:1/-1}.sim-fresh-buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .sim-msg{min-height:18px;margin-top:12px;color:#aaa;font-size:12px}.sim-error{color:#f08d75;font-size:12px;min-height:18px;margin-top:6px}
-@media(max-width:680px){.sim-grid{grid-template-columns:1fr}.sim-time-buttons{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:680px){.sim-grid{grid-template-columns:1fr}.sim-time-buttons{grid-template-columns:repeat(2,1fr)}.sim-section.sim-wide{grid-column:auto}.fresh-product{grid-template-columns:1fr auto}.fresh-start{grid-column:1/-1}.freshness-products,.freshness-batches{grid-template-columns:1fr}}
 .status-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:410;display:none;align-items:center;justify-content:center}
 .status-modal-bg.show{display:flex}
 .status-modal{background:#1e1e1e;border-radius:14px;padding:18px;width:min(620px,92vw);max-height:86vh;overflow:auto;border:1px solid #444;color:#eee}
@@ -154,6 +170,7 @@ h1{font-size:22px;margin:0 0 4px}
         <h4>Platos y tiempos</h4>
         <div class="sim-field"><label>Responsable</label><select id="simResponsible"></select></div>
         <div class="sim-field"><label>Plato</label><select id="simProduct"></select></div>
+        <div class="sim-field"><label>Cantidad</label><input type="number" id="simQuantity" min="1" max="99" value="1"></div>
         <div class="sim-time-buttons">
           <button class="sim-action sim-level" data-level="nuevo">Nuevo</button>
           <button class="sim-action sim-level" data-level="min5">5 min</button>
@@ -172,6 +189,15 @@ h1{font-size:22px;margin:0 0 4px}
           <button class="sim-action sim-soup-level" data-level="min15">15 min</button>
         </div>
         <button class="sim-reset" id="simSoupReset">Reiniciar sopas</button>
+      </div>
+      <div class="sim-section sim-wide">
+        <h4>Vida útil de comida preparada</h4>
+        <div class="sim-field"><label>Producto</label><select id="simFreshProduct"></select></div>
+        <div class="sim-fresh-buttons">
+          <button class="sim-action sim-fresh-level" data-level="fresh">Fresco</button>
+          <button class="sim-action sim-fresh-level" data-level="warning">Por vencer</button>
+          <button class="sim-action sim-fresh-level" data-level="expired">Vencido</button>
+        </div>
       </div>
     </div>
     <div class="sim-msg" id="simMessage"></div>
@@ -237,6 +263,14 @@ h1{font-size:22px;margin:0 0 4px}
     <div class="empty" id="empty-sopas" style="display:none">Sin sopas pendientes 🎉</div>
   </div>
 </div>
+<section class="freshness-section">
+  <div class="freshness-head">
+    <div><h2>🌡️ Vida útil de comida preparada</h2><p>El tiempo comienza al marcar una tanda como lista.</p></div>
+    <span class="freshness-badge" id="freshnessBadge">0 disponibles</span>
+  </div>
+  <div class="freshness-products" id="freshnessProducts"></div>
+  <div class="freshness-batches" id="freshnessBatches"><div class="fresh-empty">Sin tandas activas.</div></div>
+</section>
 
 <script>
 const SB_URL='https://vjmnbzjtvuwqowxvknlu.supabase.co';
@@ -272,6 +306,8 @@ const voiceTabId=(window.crypto&&window.crypto.randomUUID)?window.crypto.randomU
 let voiceTabActive=false;
 let encargadosObj={}, wakeLock=null;
 let productStatusObj={}, productosArr=[];
+let foodLifeConfig={p12:10},preparedFoodBatches=[],freshQuantities={};
+let foodLifeWritePending=0,foodLifeSaveChain=Promise.resolve();
 let voiceRate=parseFloat(localStorage.getItem('voiceRate_v1'))||1.0;
 let speechChain=Promise.resolve();
 let popupQueue=[],popupWin=null;
@@ -347,6 +383,11 @@ let elevenKey=localStorage.getItem('elevenApiKey_v1')||'';
 let elevenVoiceId=localStorage.getItem('elevenVoiceId_v1')||'';
 let elevenModel=localStorage.getItem('elevenModel_v1')||'eleven_multilingual_v2';
 let elevenVoices=[], currentAudio=null, currentAudioResolve=null;
+const ELEVEN_REQUEST_TIMEOUT_MS=15000;
+const ELEVEN_AUDIO_WATCHDOG_MS=60000;
+const ELEVEN_RETRY_DELAYS=[1000,2000,4000];
+const ELEVEN_CACHE_LIMIT=60;
+const elevenAudioCache=new Map();
 
 function setVoiceMsg(text,color){const m=$('voiceMsg');if(!m)return;m.textContent=text||'';m.style.color=color||'#aaa';}
 function syncVoiceControls(){
@@ -365,7 +406,7 @@ async function loadElevenVoices(){
   if(!elevenKey){setVoiceMsg('Falta la API key','#f08d75');return false;}
   setVoiceMsg('Cargando voces...');
   try{
-    const res=await fetch('https://api.elevenlabs.io/v2/voices',{headers:{'xi-api-key':elevenKey}});
+    const res=await fetchElevenWithRetry('https://api.elevenlabs.io/v2/voices',{headers:{'xi-api-key':elevenKey}});
     const data=await res.json();
     if(!res.ok)throw new Error(data?.detail?.message||data?.detail||'No se pudo cargar voces');
     elevenVoices=data.voices||[];
@@ -403,7 +444,12 @@ const FRASES={
     'Nuevo pedido, sale {art} {plato}. Manos a la obra.',
     'Atentos en linea, entra {art} {plato}.',
     'Vamos marcando {art} {plato}. Cero errores y rápido.',
-    'Pedido en cola: {art} {plato}. Lo quiero perfecto y rapido.'
+    'Pedido en cola: {art} {plato}. Lo quiero perfecto y rapido.',
+    'Entra {art} {plato}. Vamos con buen ritmo desde el arranque.',
+    'Sale {art} {plato}. Atención en su estación.',
+    'Nueva comanda: {art} {plato}. Vamos trabajándolo.',
+    'Marcamos {art} {plato}. Orden y rapidez, equipo.',
+    'Tenemos {art} {plato} en línea. Empecemos de una vez.'
   ],
   min5:[
     'Muchachos, van cinco minutos con {art} {plato}. ¿En que estamos?',
@@ -413,7 +459,12 @@ const FRASES={
     'Atencion aqui, {art} {plato} ya tiene cinco. Vamos cerrandolo.',
     'Aceleren con {art} {plato}, no se me duerman.',
     'Vamos, equipo, {art} {plato} sigue colgado. ¿Falta mucho?',
-    'Ponganse las pilas con {art} {plato}, ya toca sacarlo.'
+    'Ponganse las pilas con {art} {plato}, ya toca sacarlo.',
+    'Cinco minutos con {art} {plato}. Necesito avance, equipo.',
+    'Atención con {art} {plato}; ya toca ir cerrándolo.',
+    'Revisen {art} {plato}. El cliente sigue esperando.',
+    'Vamos dando prioridad a {art} {plato}; ya tiene cinco.',
+    'No perdamos tiempo con {art} {plato}. Muévanlo, por favor.'
   ],
   min10:[
     '¡Diez minutos con {art} {plato}! Ponganse las pilas de una vez, esto es prioridad.',
@@ -423,7 +474,12 @@ const FRASES={
     '¡Dejen de dar vueltas y saquenme {art} {plato}! Lo quiero en la ventana ya.',
     'Equipo, necesito {art} {plato} para ayer. ¡Aprieten, aprieten!',
     '¡Diez minutos es un abuso! {art} {plato} tiene que salir en este instante.',
-    '¡Despierten en cocina! Enfoquen {art} {plato}, no quiero ni una excusa.'
+    '¡Despierten en cocina! Enfoquen {art} {plato}, no quiero ni una excusa.',
+    '¡Diez minutos con {art} {plato}! Esto ya es prioridad.',
+    '¡Necesito {art} {plato} en la ventana ahora!',
+    '¡Cocina, enfoquen {art} {plato}! La demora ya es demasiado.',
+    '¡Ese {plato} no puede esperar más! Ciérrenlo ya.',
+    '¡Primero {art} {plato}! Quiero una solución inmediata.'
   ],
   min15:[
     '¡Quince minutos por {art} {plato}! ¿Estan bromeando conmigo? ¡SAQUENLO AHORA!',
@@ -433,7 +489,12 @@ const FRASES={
     '¡Prioridad absoluta para {art} {plato}! El resto espera. ¡Quiero ese plato ya!',
     '¡Que desastre, quince minutos! Dejen lo secundario y emplaten {art} {plato} de una maldita vez.',
     '¡Ya no hay paciencia que aguante! {art} {plato} a la mesa AHORA, no lo repito.',
-    '¡Cocina, reaccionen! ¿Que parte de urgente no se entiende? ¡{art} {plato} afuera YA!'
+    '¡Cocina, reaccionen! ¿Que parte de urgente no se entiende? ¡{art} {plato} afuera YA!',
+    '¡Quince minutos con {art} {plato}! ¡Paren y sáquenlo ya!',
+    '¡Prioridad absoluta para {art} {plato}! No puede seguir pendiente.',
+    '¡Ese {plato} está en crítico! ¡A la ventana ahora mismo!',
+    '¡No acepto más demora con {art} {plato}! Resuélvanlo ya.',
+    '¡Cocina, reacción inmediata con {art} {plato}! El cliente ya esperó demasiado.'
   ]
 };
 const FRASES_RESPETUOSAS={
@@ -488,7 +549,42 @@ function tratamientoRespetuoso(nombre){
   if(key.includes('yesmira'))return 'Yesmira';
   return '';
 }
+function pluralizarPrimerNombre(label){
+  const partes=String(label||'').trim().toLowerCase().split(/\s+/);
+  if(!partes.length)return label;
+  const especiales={huevo:'huevos',huevos:'huevos','plátano':'plátanos','plátanos':'plátanos',platano:'plátanos',platanos:'plátanos',arroz:'arroces'};
+  const primera=partes[0];
+  if(especiales[primera])partes[0]=especiales[primera];
+  else if(/z$/.test(primera))partes[0]=primera.slice(0,-1)+'ces';
+  else if(/[aeiouáéíóú]$/.test(primera))partes[0]=primera+'s';
+  else if(!/s$/.test(primera))partes[0]=primera+'es';
+  return partes.join(' ');
+}
+function singularizarProducto(label){
+  const partes=String(label||'').trim().toLowerCase().split(/\s+/);
+  if(!partes.length)return label;
+  const especiales={huevos:'huevo','plátanos':'plátano',platanos:'plátano',arroces:'arroz'};
+  const primera=partes[0];
+  if(especiales[primera])partes[0]=especiales[primera];
+  else if(/ces$/.test(primera))partes[0]=primera.slice(0,-3)+'z';
+  else if(/s$/.test(primera)&&!/(arroz|tamarindo)$/.test(primera))partes[0]=primera.slice(0,-1);
+  return partes.join(' ');
+}
+function normalizarPedidoParaVoz(art,label){
+  const limpio=String(label||'').trim();
+  const match=limpio.match(/^(\d+)\s+(.+)$/);
+  if(!match)return {art:String(art||'').trim(),label:limpio};
+  const cantidad=Math.max(1,parseInt(match[1],10)||1);
+  const singular=singularizarProducto(match[2]);
+  if(cantidad===1)return {art:'un',label:singular};
+  return {art:'',label:cantidadVoz(cantidad,'m')+' '+pluralizarPrimerNombre(singular)};
+}
+function articuloPedido(order){
+  return order&&Object.prototype.hasOwnProperty.call(order,'art')?String(order.art||''):'un';
+}
 function fraseAleatoria(art,label,nivel='nuevo',station='',responsableOverride=null){
+  const pedidoVoz=normalizarPedidoParaVoz(art,label);
+  art=pedidoVoz.art;label=pedidoVoz.label;
   const responsable=responsableOverride===null?responsableDeEstacion(station):String(responsableOverride||'').trim();
   const tratamiento=tratamientoRespetuoso(responsable);
   if(tratamiento){
@@ -513,50 +609,106 @@ async function readElevenError(res){
     if(code==='voice_not_found')return {code,message:'La voz guardada ya no existe en ElevenLabs.'};
     if(code==='invalid_api_key')return {code,message:'La API key de ElevenLabs no es válida.'};
     if(code==='quota_exceeded')return {code,message:'Se agotó el saldo disponible de ElevenLabs.'};
+    if(code==='too_many_concurrent_requests')return {code,message:'ElevenLabs recibió demasiadas solicitudes al mismo tiempo.'};
+    if(res.status===401)return {code,message:'ElevenLabs rechazó la API key.'};
+    if(res.status===403)return {code,message:'La API key no tiene permiso para generar esta voz.'};
+    if(res.status===429)return {code,message:'ElevenLabs alcanzó temporalmente el límite de solicitudes.'};
+    if(res.status>=500)return {code,message:'ElevenLabs está temporalmente fuera de servicio.'};
     return {code,message:detail?.message||data?.message||'ElevenLabs rechazó la solicitud.'};
   }catch(e){return {code:'',message:'ElevenLabs rechazó la solicitud.'};}
 }
 
 function waitEleven(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 
-async function speakEleven(text,onDone,allowVoiceRetry=true,attempt=0,allowDesktopSimulation=false){
+async function fetchElevenWithTimeout(url,options={}){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),ELEVEN_REQUEST_TIMEOUT_MS);
+  try{return await fetch(url,{...options,signal:controller.signal});}
+  finally{clearTimeout(timer);}
+}
+
+async function fetchElevenWithRetry(url,options={}){
+  let lastError=null,lastResponse=null;
+  for(let attempt=0;attempt<=ELEVEN_RETRY_DELAYS.length;attempt++){
+    try{
+      const res=await fetchElevenWithTimeout(url,options);
+      lastResponse=res;
+      if(res.ok||![408,425,429,500,502,503,504].includes(res.status))return res;
+    }catch(e){lastError=e;}
+    if(attempt<ELEVEN_RETRY_DELAYS.length){
+      setVoiceMsg('ElevenLabs no respondió. Reintento '+(attempt+1)+' de '+ELEVEN_RETRY_DELAYS.length+'...','#f0c450');
+      await waitEleven(ELEVEN_RETRY_DELAYS[attempt]);
+    }
+  }
+  if(lastResponse)return lastResponse;
+  throw new Error(lastError?.name==='AbortError'?'ElevenLabs tardó demasiado en responder.':'No se pudo conectar con ElevenLabs.');
+}
+
+function elevenCacheKey(text){
+  return [elevenVoiceId,elevenModel,voiceRate.toFixed(2),text].join('|');
+}
+function cacheElevenAudio(key,blob){
+  if(elevenAudioCache.has(key))elevenAudioCache.delete(key);
+  elevenAudioCache.set(key,blob);
+  while(elevenAudioCache.size>ELEVEN_CACHE_LIMIT)elevenAudioCache.delete(elevenAudioCache.keys().next().value);
+}
+function playElevenAudio(blob,onDone){
+  const url=URL.createObjectURL(blob);
+  const audio=new Audio(url);currentAudio=audio;
+  let finished=false;
+  let watchdog=null;
+  const done=()=>{
+    if(finished)return;
+    finished=true;clearTimeout(watchdog);
+    audio.onended=null;audio.onerror=null;
+    URL.revokeObjectURL(url);
+    if(currentAudio===audio)currentAudio=null;
+    if(currentAudioResolve===done)currentAudioResolve=null;
+    onDone&&onDone();
+  };
+  currentAudioResolve=done;
+  audio.onended=done;
+  audio.onerror=()=>{setVoiceMsg('El audio no pudo reproducirse. La cola continuará.','#f08d75');done();};
+  watchdog=setTimeout(()=>{
+    try{audio.pause();}catch(e){}
+    setVoiceMsg('Un audio quedó detenido y se liberó automáticamente.','#f0c450');
+    done();
+  },ELEVEN_AUDIO_WATCHDOG_MS);
+  audio.play().then(()=>setVoiceMsg('ElevenLabs conectado · voz lista','#6fcf97')).catch(()=>{
+    setVoiceMsg('El navegador bloqueó este audio. La cola continuará.','#f08d75');
+    done();
+  });
+}
+
+async function speakEleven(text,onDone,allowVoiceRetry=true,allowDesktopSimulation=false){
   if(!voiceDeviceAllowed&&!allowDesktopSimulation){onDone&&onDone();return;}
   try{
     if(!elevenKey||!elevenVoiceId)throw new Error('Falta API key o voz');
-    let res;
-    try{
-      res=await fetch('https://api.elevenlabs.io/v1/text-to-speech/'+encodeURIComponent(elevenVoiceId)+'?output_format=mp3_44100_128',{
+    const cacheKey=elevenCacheKey(text);
+    let blob=elevenAudioCache.get(cacheKey);
+    if(!blob){
+      const res=await fetchElevenWithRetry('https://api.elevenlabs.io/v1/text-to-speech/'+encodeURIComponent(elevenVoiceId)+'?output_format=mp3_44100_128',{
         method:'POST',
         headers:{'xi-api-key':elevenKey,'Content-Type':'application/json'},
         body:JSON.stringify({text,model_id:elevenModel,voice_settings:{stability:.45,similarity_boost:.8,style:.15,use_speaker_boost:true,speed:Math.max(.7,Math.min(1.2,voiceRate))}})
       });
-    }catch(networkError){
-      if(attempt<2){await waitEleven(700*(attempt+1));return speakEleven(text,onDone,allowVoiceRetry,attempt+1,allowDesktopSimulation);}
-      throw new Error('No se pudo conectar con ElevenLabs.');
-    }
-    if(!res.ok){
-      const error=await readElevenError(res);
-      if(error.code==='voice_not_found'&&allowVoiceRetry){
-        const previousId=elevenVoiceId;
-        const recovered=await loadElevenVoices();
-        if(recovered&&elevenVoiceId&&elevenVoiceId!==previousId)return speakEleven(text,onDone,false,attempt,allowDesktopSimulation);
+      if(!res.ok){
+        const error=await readElevenError(res);
+        if(error.code==='voice_not_found'&&allowVoiceRetry){
+          const previousId=elevenVoiceId;
+          const recovered=await loadElevenVoices();
+          if(recovered&&elevenVoiceId&&elevenVoiceId!==previousId)return speakEleven(text,onDone,false,allowDesktopSimulation);
+        }
+        throw new Error(error.message);
       }
-      if([408,429,500,502,503,504].includes(res.status)&&error.code!=='quota_exceeded'&&attempt<2){
-        await waitEleven(700*(attempt+1));
-        return speakEleven(text,onDone,allowVoiceRetry,attempt+1,allowDesktopSimulation);
-      }
-      throw new Error(error.message);
+      blob=await res.blob();
+      if(!blob.size)throw new Error('ElevenLabs devolvió un audio vacío.');
+      cacheElevenAudio(cacheKey,blob);
     }
-    const blob=await res.blob();
-    const url=URL.createObjectURL(blob);
-    const audio=new Audio(url);currentAudio=audio;
-    let finished=false;
-    const done=()=>{if(finished)return;finished=true;URL.revokeObjectURL(url);if(currentAudio===audio)currentAudio=null;currentAudioResolve=null;onDone&&onDone();};
-    currentAudioResolve=done;audio.onended=done;audio.onerror=done;
-    await audio.play();
+    playElevenAudio(blob,onDone);
   }catch(e){setVoiceMsg((e.message||'ElevenLabs no respondió')+' No se reprodujo el aviso.','#f08d75');onDone&&onDone();}
 }
-function speakOne(text,onDone,allowDesktopSimulation=false){speakEleven(text,onDone,true,0,allowDesktopSimulation);}
+function speakOne(text,onDone,allowDesktopSimulation=false){speakEleven(text,onDone,true,allowDesktopSimulation);}
 function readVoiceTabLease(){
   try{return JSON.parse(localStorage.getItem(VOICE_TAB_LEASE_KEY)||'null');}catch(e){return null;}
 }
@@ -577,8 +729,19 @@ function releaseVoiceTabLease(){
 }
 function canThisTabSpeak(){return soundOn&&voiceDeviceAllowed&&claimVoiceTabLease();}
 
-const NUMEROS_VOZ=['cero','una','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte'];
-function cantidadVoz(n){return NUMEROS_VOZ[n]||String(n);}
+const NUMEROS_VOZ=['cero','una','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte','veintiuna','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis','veintisiete','veintiocho','veintinueve'];
+const DECENAS_VOZ={3:'treinta',4:'cuarenta',5:'cincuenta',6:'sesenta',7:'setenta',8:'ochenta',9:'noventa'};
+function cantidadVoz(n,genero='f'){
+  n=Math.max(0,Math.round(Number(n)||0));
+  let texto=NUMEROS_VOZ[n];
+  if(!texto&&n<100){
+    const decena=Math.floor(n/10),unidad=n%10;
+    texto=(DECENAS_VOZ[decena]||String(decena*10))+(unidad?' y '+NUMEROS_VOZ[unidad]:'');
+  }
+  texto=texto||String(n);
+  if(genero==='m')texto=texto.replace(/veintiuna$/,'veintiún').replace(/una$/,'un');
+  return texto;
+}
 function textoResumenSopas(pequenas,litros,nivel='nuevo'){
   pequenas=Math.max(0,Number(pequenas)||0);litros=Math.max(0,Number(litros)||0);
   const total=pequenas+litros;if(!total)return '';
@@ -609,7 +772,7 @@ function encolarResumenSopas(orders,nivel='nuevo'){
 
 $('testVoiceBtn').onclick=()=>{
   if(!canThisTabSpeak()){setVoiceMsg(voiceDeviceAllowed?'Otra pestaña de Cocina tiene la voz.':'La voz está reservada al celular.','#f0c450');return;}
-  if(currentAudio){currentAudio.pause();currentAudio=null;}
+  if(currentAudio){currentAudio.pause();if(currentAudioResolve)currentAudioResolve();currentAudio=null;}
   speakOne(fraseAleatoria('un','Chaufa','nuevo','saltado'));
 };
 
@@ -643,7 +806,7 @@ function revisarAvisosPorTiempo(){
       orderAlertLevels[o.id]=actual;
       const alerta=ALERTAS_TIEMPO.find(a=>a.min===actual);
       if(alerta&&o.station==='sopas'&&alerta.min>minutosSopas){nivelSopas=alerta.key;minutosSopas=alerta.min;}
-      else if(alerta)encolarAnuncio(o.art||'un',o.label,alerta.key,o.station);
+      else if(alerta)encolarAnuncio(articuloPedido(o),o.label,alerta.key,o.station);
     }
   });
   if(nivelSopas)encolarResumenSopas(ordersArr.filter(o=>o.status==='pending'&&o.station==='sopas'),nivelSopas);
@@ -765,8 +928,8 @@ function toLegacyStatusObject(obj){
 }
 async function loadProducts(){
   try{
-    const arr=await api('panes?select=id,label,station')||[];
-    productosArr=(arr.length?arr:DEFAULT_PRODUCTS).map(p=>({id:p.id,label:p.label,station:p.station||'saltado'}));
+    const arr=await api('panes?select=id,label,station,art')||[];
+    productosArr=(arr.length?arr:DEFAULT_PRODUCTS).map(p=>({id:p.id,label:p.label,station:p.station||'saltado',art:p.art||'un'}));
   }catch(e){productosArr=[...DEFAULT_PRODUCTS];}
   productosArr=[...productosArr,...SOUP_PRODUCTS];
 }
@@ -818,6 +981,178 @@ function renderStatusManager(){
 $('statusBtn').onclick=()=>{refreshProductStatus().finally(()=>{renderStatusManager();$('statusModalBg').classList.add('show');});};
 $('closeStatusBtn').onclick=()=>$('statusModalBg').classList.remove('show');
 
+// ---- Vida útil de comida preparada ----
+function normalizarVidaUtilConfig(value){
+  const result={};
+  Object.entries(value&&typeof value==='object'&&!Array.isArray(value)?value:{}).forEach(([id,minutos])=>{
+    const n=Math.max(0,Math.min(240,Math.round(Number(minutos)||0)));
+    if(n>0)result[id]=n;
+  });
+  return result;
+}
+function normalizarTandas(value){
+  if(!Array.isArray(value))return [];
+  return value.map((batch,index)=>({
+    id:String(batch.id||('tanda_'+Date.now()+'_'+index)),
+    pan_id:String(batch.pan_id||''),
+    label:String(batch.label||'Producto'),
+    quantity:Math.max(1,Math.min(99,Math.round(Number(batch.quantity)||1))),
+    started_at:Number(batch.started_at)||Date.now(),
+    duration_min:Math.max(1,Math.min(240,Math.round(Number(batch.duration_min)||10))),
+    warning_announced:batch.warning_announced===true,
+    expired_announced:batch.expired_announced===true
+  })).filter(batch=>batch.pan_id);
+}
+async function loadFoodLifeState(){
+  const rows=await api("config?key=in.(food_life_config,prepared_food_batches)&select=*")||[];
+  const lifeRow=rows.find(row=>row.key==='food_life_config');
+  const batchRow=rows.find(row=>row.key==='prepared_food_batches');
+  foodLifeConfig=lifeRow?normalizarVidaUtilConfig(parseConfigValue(lifeRow.value,{})):{p12:10};
+  preparedFoodBatches=normalizarTandas(parseConfigValue(batchRow?.value,[]));
+  renderFreshness();
+}
+async function refreshFoodLifeState(){
+  if(foodLifeWritePending)return;
+  try{
+    const before=JSON.stringify([foodLifeConfig,preparedFoodBatches]);
+    await loadFoodLifeState();
+    if(JSON.stringify([foodLifeConfig,preparedFoodBatches])!==before)renderFreshness();
+  }catch(e){}
+}
+function savePreparedFoodBatches(){
+  const value=JSON.stringify(preparedFoodBatches);
+  foodLifeWritePending++;
+  const task=foodLifeSaveChain.catch(()=>{}).then(()=>api('config',{
+    method:'POST',
+    body:JSON.stringify({key:'prepared_food_batches',value}),
+    prefer:'resolution=merge-duplicates'
+  }));
+  foodLifeSaveChain=task.catch(()=>{}).finally(()=>{foodLifeWritePending=Math.max(0,foodLifeWritePending-1);});
+  return task;
+}
+function productoVida(id){
+  return productosArr.find(p=>p.id===id);
+}
+function cantidadDescripcionProducto(cantidad,label,art='un'){
+  cantidad=Math.max(1,Math.round(Number(cantidad)||1));
+  const singular=singularizarProducto(label);
+  const femenino=/^una/i.test(String(art||''));
+  if(cantidad===1)return (femenino?'una ':'un ')+singular;
+  return cantidadVoz(cantidad,femenino?'f':'m')+' '+pluralizarPrimerNombre(singular);
+}
+function estadoTanda(batch,now=Date.now()){
+  const durationMs=batch.duration_min*60000;
+  const remainingMs=(batch.started_at+durationMs)-now;
+  const warningMs=Math.min(120000,Math.max(30000,durationMs*.2));
+  return {remainingMs,warningMs,state:remainingMs<=0?'expired':remainingMs<=warningMs?'warning':'fresh'};
+}
+function formatoCuentaRegresiva(ms){
+  const seconds=Math.ceil(Math.abs(ms)/1000),minutes=Math.floor(seconds/60),rest=seconds%60;
+  return String(minutes).padStart(2,'0')+':'+String(rest).padStart(2,'0');
+}
+function renderFreshnessControls(){
+  const wrap=$('freshnessProducts');wrap.innerHTML='';
+  const products=productosArr.filter(p=>!p.isSoup&&(foodLifeConfig[p.id]||0)>0);
+  if(!products.length){wrap.innerHTML='<div class="fresh-empty">Configura los minutos de vida útil desde Administración.</div>';return;}
+  products.forEach(product=>{
+    const quantity=freshQuantities[product.id]||1;
+    const row=document.createElement('div');row.className='fresh-product';
+    const info=document.createElement('div');info.innerHTML='<div class="fresh-product-name">'+product.label+'</div><div class="fresh-product-life">'+foodLifeConfig[product.id]+' min de vida útil</div>';
+    const qty=document.createElement('div');qty.className='fresh-qty';
+    const minus=document.createElement('button');minus.textContent='−';minus.title='Restar unidad';
+    const count=document.createElement('span');count.textContent=quantity;
+    const plus=document.createElement('button');plus.textContent='+';plus.title='Agregar unidad';
+    minus.onclick=()=>{freshQuantities[product.id]=Math.max(1,quantity-1);renderFreshnessControls();};
+    plus.onclick=()=>{freshQuantities[product.id]=Math.min(99,quantity+1);renderFreshnessControls();};
+    qty.append(minus,count,plus);
+    const start=document.createElement('button');start.className='fresh-start';start.textContent='✓ Tanda lista';start.onclick=()=>iniciarTanda(product.id);
+    row.append(info,qty,start);wrap.appendChild(row);
+  });
+}
+function renderFreshnessBatches(){
+  const wrap=$('freshnessBatches');wrap.innerHTML='';
+  let disponibles=0;
+  preparedFoodBatches.slice().sort((a,b)=>a.started_at-b.started_at).forEach(batch=>{
+    const status=estadoTanda(batch);
+    if(status.state!=='expired')disponibles+=batch.quantity;
+    const product=productoVida(batch.pan_id);
+    const card=document.createElement('div');card.className='fresh-batch '+status.state;
+    const stateLabel=status.state==='fresh'?'Fresco':status.state==='warning'?'Por vencer':'Vencido';
+    const quantityLabel=batch.quantity>1?batch.quantity+' '+pluralizarPrimerNombre(singularizarProducto(batch.label)):batch.label;
+    const top=document.createElement('div');top.className='fresh-batch-top';
+    top.innerHTML='<div class="fresh-batch-name">'+quantityLabel+'</div><div class="fresh-batch-state">'+stateLabel+'</div>';
+    const countdown=document.createElement('div');countdown.className='fresh-countdown';
+    countdown.textContent=status.state==='expired'?'Venció '+formatoCuentaRegresiva(status.remainingMs):formatoCuentaRegresiva(status.remainingMs);
+    const meta=document.createElement('div');meta.className='fresh-batch-meta';
+    meta.textContent='Inició '+new Date(batch.started_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})+' · límite '+batch.duration_min+' min';
+    const actions=document.createElement('div');actions.className='fresh-actions';
+    const used=document.createElement('button');used.textContent='✓ Consumida';used.onclick=()=>retirarTanda(batch.id,false);
+    const renew=document.createElement('button');renew.textContent='↻ Renovar';renew.onclick=()=>renovarTanda(batch.id);
+    const discard=document.createElement('button');discard.className='discard';discard.textContent='🗑 Descartar';discard.onclick=()=>retirarTanda(batch.id,true);
+    actions.append(used,renew,discard);card.append(top,countdown,meta,actions);wrap.appendChild(card);
+  });
+  if(!preparedFoodBatches.length)wrap.innerHTML='<div class="fresh-empty">Sin tandas activas.</div>';
+  $('freshnessBadge').textContent=disponibles+' disponible'+(disponibles===1?'':'s');
+}
+function renderFreshness(){renderFreshnessControls();renderFreshnessBatches();}
+async function iniciarTanda(productId){
+  const product=productoVida(productId),duration=foodLifeConfig[productId];if(!product||!duration)return;
+  const quantity=freshQuantities[productId]||1;
+  preparedFoodBatches.push({
+    id:'t_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+    pan_id:product.id,label:product.label,quantity,started_at:Date.now(),duration_min:duration,
+    warning_announced:false,expired_announced:false
+  });
+  freshQuantities[productId]=1;renderFreshness();
+  try{await savePreparedFoodBatches();}catch(e){alert('No se pudo guardar la tanda: '+e.message);}
+}
+async function renovarTanda(id){
+  const batch=preparedFoodBatches.find(item=>item.id===id);if(!batch)return;
+  batch.started_at=Date.now();batch.duration_min=foodLifeConfig[batch.pan_id]||batch.duration_min;
+  batch.warning_announced=false;batch.expired_announced=false;renderFreshnessBatches();
+  try{await savePreparedFoodBatches();}catch(e){alert('No se pudo renovar la tanda: '+e.message);}
+}
+async function registrarDescarte(batch){
+  const rows=await api("config?key=eq.food_waste_log")||[];
+  const log=parseConfigValue(rows?.[0]?.value,[]);
+  const history=Array.isArray(log)?log:[];
+  history.push({id:'d_'+Date.now(),batch_id:batch.id,pan_id:batch.pan_id,label:batch.label,quantity:batch.quantity,started_at:batch.started_at,discarded_at:Date.now(),expired:estadoTanda(batch).state==='expired'});
+  await api('config',{method:'POST',body:JSON.stringify({key:'food_waste_log',value:JSON.stringify(history.slice(-500))}),prefer:'resolution=merge-duplicates'});
+}
+async function retirarTanda(id,discard){
+  const batch=preparedFoodBatches.find(item=>item.id===id);if(!batch)return;
+  if(discard&&!confirm('¿Registrar esta tanda como descartada?'))return;
+  preparedFoodBatches=preparedFoodBatches.filter(item=>item.id!==id);renderFreshnessBatches();
+  try{
+    if(discard)await registrarDescarte(batch);
+    await savePreparedFoodBatches();
+  }catch(e){alert('No se pudo actualizar la tanda: '+e.message);}
+}
+function textoAlertaVidaUtil(batch,level){
+  const product=productoVida(batch.pan_id);
+  const descripcion=cantidadDescripcionProducto(batch.quantity,batch.label,product?.art);
+  if(level==='fresh')return 'La tanda de '+descripcion+' está fresca. Tiene una vida útil de '+cantidadVoz(batch.duration_min,'m')+' minuto'+(batch.duration_min===1?'':'s')+'.';
+  if(level==='warning'){
+    const warningMinutes=Math.max(1,Math.round(estadoTanda(batch).warningMs/60000));
+    return 'Atención. A la tanda de '+descripcion+' le quedan '+cantidadVoz(warningMinutes,'m')+' minuto'+(warningMinutes===1?'':'s')+' de vida útil.';
+  }
+  return 'Atención cocina. La tanda de '+descripcion+' llegó a su tiempo límite. Retírenla ahora.';
+}
+function revisarAlertasVidaUtil(){
+  renderFreshnessBatches();
+  if(!preparedFoodBatches.length||!voiceDeviceAllowed||!soundOn||!elevenKey||!elevenVoiceId||!canThisTabSpeak())return;
+  let changed=false;
+  preparedFoodBatches.forEach(batch=>{
+    const status=estadoTanda(batch);
+    if(status.state==='expired'&&!batch.expired_announced){
+      batch.expired_announced=true;changed=true;encolarTexto(textoAlertaVidaUtil(batch,'expired'));
+    }else if(status.state==='warning'&&!batch.warning_announced){
+      batch.warning_announced=true;changed=true;encolarTexto(textoAlertaVidaUtil(batch,'warning'));
+    }
+  });
+  if(changed)savePreparedFoodBatches().catch(()=>{});
+}
+
 // ---- Modo simulación: solo reproduce voz, nunca crea pedidos ----
 let simulationUnlocked=false,simSoupSmall=0,simSoupLiter=0;
 const SIM_ARTICLES={p2:'unos',p4:'unos',p14:'unas',p15:'unas',p16:'unos'};
@@ -829,6 +1164,10 @@ function buildSimulationOptions(){
   names.forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=tratamientoRespetuoso(name)||name;responsible.appendChild(o);});
   const product=$('simProduct');product.innerHTML='';
   productosArr.filter(p=>!p.isSoup).forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.label;product.appendChild(o);});
+  const freshProduct=$('simFreshProduct');freshProduct.innerHTML='';
+  let freshOptions=productosArr.filter(p=>!p.isSoup&&(foodLifeConfig[p.id]||0)>0);
+  if(!freshOptions.length)freshOptions=productosArr.filter(p=>!p.isSoup);
+  freshOptions.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.label+' · '+(foodLifeConfig[p.id]||10)+' min';freshProduct.appendChild(o);});
 }
 function openSimulation(){buildSimulationOptions();$('simModalBg').classList.add('show');setSimMessage('Las pruebas no crean pedidos ni estadísticas.');}
 function requestSimulation(){
@@ -847,8 +1186,11 @@ function queueSimulationText(text){
 function simulateDishLevel(level){
   const product=productosArr.find(p=>p.id===$('simProduct').value);if(!product)return;
   const responsable=$('simResponsible').value;
-  const art=SIM_ARTICLES[product.id]||'un';
-  queueSimulationText(fraseAleatoria(art,product.label,level,product.station,responsable));
+  const quantity=Math.max(1,Math.min(99,Math.round(Number($('simQuantity').value)||1)));
+  $('simQuantity').value=quantity;
+  const art=quantity===1?(product.art||SIM_ARTICLES[product.id]||'un'):'';
+  const label=quantity===1?product.label:quantity+' '+pluralizarPrimerNombre(singularizarProducto(product.label));
+  queueSimulationText(fraseAleatoria(art,label,level,product.station,responsable));
 }
 function updateSimSoupCounts(){$('simSoupSmallCount').textContent=simSoupSmall;$('simSoupLiterCount').textContent=simSoupLiter;}
 function simulateSoupLevel(level='nuevo'){
@@ -860,6 +1202,12 @@ function changeSimSoup(type,delta,announce){
   if(type==='small')simSoupSmall=Math.max(0,simSoupSmall+delta);else simSoupLiter=Math.max(0,simSoupLiter+delta);
   updateSimSoupCounts();if(announce)simulateSoupLevel('nuevo');
 }
+function simulateFreshnessLevel(level){
+  const product=productosArr.find(p=>p.id===$('simFreshProduct').value);if(!product)return;
+  const quantity=Math.max(1,Math.min(99,Math.round(Number($('simQuantity').value)||1)));
+  const batch={pan_id:product.id,label:product.label,quantity,started_at:Date.now(),duration_min:foodLifeConfig[product.id]||10};
+  queueSimulationText(textoAlertaVidaUtil(batch,level));
+}
 $('simBtn').onclick=requestSimulation;
 $('simPasswordEnter').onclick=verifySimulationPassword;
 $('simPasswordClose').onclick=()=>$('simPasswordBg').classList.remove('show');
@@ -869,6 +1217,7 @@ $('simPasswordBg').onclick=e=>{if(e.target===$('simPasswordBg'))$('simPasswordBg
 $('simModalBg').onclick=e=>{if(e.target===$('simModalBg'))$('simModalBg').classList.remove('show');};
 document.querySelectorAll('.sim-level').forEach(btn=>btn.onclick=()=>simulateDishLevel(btn.dataset.level));
 document.querySelectorAll('.sim-soup-level').forEach(btn=>btn.onclick=()=>simulateSoupLevel(btn.dataset.level));
+document.querySelectorAll('.sim-fresh-level').forEach(btn=>btn.onclick=()=>simulateFreshnessLevel(btn.dataset.level));
 $('simSoupSmallMinus').onclick=()=>changeSimSoup('small',-1,false);
 $('simSoupSmallPlus').onclick=()=>changeSimSoup('small',1,true);
 $('simSoupLiterMinus').onclick=()=>changeSimSoup('liter',-1,false);
@@ -949,7 +1298,7 @@ async function pollOrders(){
     if(!firstLoad){
       const nuevos=fresh.filter(o=>!seenIds.has(o.id));
       nuevos.forEach(o=>{orderAlertLevels[o.id]=0;notificar(o.label,o.station);});
-      nuevos.filter(o=>o.station!=='sopas').forEach(o=>encolarAnuncio(o.art||'un',o.label,'nuevo',o.station));
+      nuevos.filter(o=>o.station!=='sopas').forEach(o=>encolarAnuncio(articuloPedido(o),o.label,'nuevo',o.station));
       if(nuevos.some(o=>o.station==='sopas'))encolarResumenSopas(fresh.filter(o=>o.station==='sopas'),'nuevo');
     }
     fresh.forEach(o=>seenIds.add(o.id));
@@ -974,7 +1323,10 @@ async function init(){
     const cfgArr=await api("config?key=eq.staff_list")||[];
     if(cfgArr[0]?.value) STAFF=parseConfigValue(cfgArr[0].value,STAFF);
     await loadProducts();
-    await loadProductStatus();
+    await Promise.all([
+      loadProductStatus(),
+      loadFoodLifeState().catch(()=>{foodLifeConfig={p12:10};preparedFoodBatches=[];renderFreshness();})
+    ]);
     const turnoArr=await api('turno_actual?select=*')||[];
     if(turnoArr[0]?.encargados){
       encargadosObj=turnoArr[0].encargados;
@@ -992,6 +1344,10 @@ async function init(){
   setInterval(pollOrders, 2000);
   // Mantiene sincronizadas las eliminaciones y asignaciones hechas desde Admin.
   setInterval(refreshTeamState, 10000);
+  // Sincroniza configuración y tandas creadas desde otra pantalla.
+  setInterval(refreshFoodLifeState, 5000);
+  // Actualiza la cuenta regresiva y emite cada aviso una sola vez.
+  setInterval(revisarAlertasVidaUtil, 1000);
   // Recordatorios de jefe de cocina: una sola vez a los 5, 10 y 15 minutos.
   setInterval(revisarAvisosPorTiempo, 30000);
 
@@ -999,7 +1355,7 @@ async function init(){
   // porque en algunos navegadores de PC eso congelaba la pantalla.
   try{
     wsListen('orders', ()=>{ setTimeout(pollOrders, 300); });
-    wsListen('config', ()=>{ setTimeout(refreshProductStatus, 300); });
+    wsListen('config', ()=>{setTimeout(refreshProductStatus,300);setTimeout(refreshFoodLifeState,350);});
   }catch(e){}
 }
 
@@ -1096,7 +1452,7 @@ setInterval(()=>{
 window.addEventListener('beforeunload',releaseVoiceTabLease);
 $('recuentoBtn').onclick=()=>{
   const pending=ordersArr.filter(o=>o.status==='pending').sort((a,b)=>orderCreatedMs(a)-orderCreatedMs(b));if(!pending.length)return;
-  pending.filter(o=>o.station!=='sopas').forEach(o=>encolarAnuncio(o.art,o.label,'nuevo',o.station));
+  pending.filter(o=>o.station!=='sopas').forEach(o=>encolarAnuncio(articuloPedido(o),o.label,'nuevo',o.station));
   const soups=pending.filter(o=>o.station==='sopas');if(soups.length)encolarResumenSopas(soups,'nuevo');
 };
 $('fullscreenBtn').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});else document.exitFullscreen();};

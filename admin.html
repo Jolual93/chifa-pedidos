@@ -66,6 +66,11 @@ input[type=date]{background:#222;border:1px solid #444;color:#fff;border-radius:
 .period-btn{border:0;border-right:1px solid #444;background:#222;color:#aaa;padding:8px 15px;font-size:12px;font-weight:700;cursor:pointer;min-width:76px}.period-btn:last-child{border-right:0}.period-btn.active{background:#b53030;color:#fff}
 .period-meta{color:#aaa;font-size:12px;flex:1;min-width:180px}.record-delete{width:30px;height:30px;border:1px solid #593535;border-radius:6px;background:#2b2020;color:#f08d75;cursor:pointer}.record-delete:hover{background:#442525}
 .hist-tabla tr.outlier td{background:rgba(181,48,48,.09)}.outlier-label{display:inline-block;margin-left:6px;color:#f08d75;font-size:10px;font-weight:700}
+.life-help{font-size:12px;color:#888;margin:-5px 0 12px}.life-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-bottom:12px}
+.life-row{display:grid;grid-template-columns:1fr 72px;gap:10px;align-items:center;background:#222;border:1px solid #333;border-radius:8px;padding:9px 10px}
+.life-name{font-size:12px;font-weight:700;color:#ddd}.life-station{font-size:10px;color:#777;margin-top:2px}.life-input-wrap{display:flex;align-items:center;gap:4px;color:#888;font-size:11px}
+.life-input{width:48px;background:#171717;border:1px solid #555;color:#fff;border-radius:5px;padding:6px;text-align:center;font-size:13px}
+.life-save{background:#2e7d4f;color:#fff;border:0;border-radius:7px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer}.life-msg{font-size:12px;margin-left:8px;color:#6fcf97}
 @media(max-width:760px){.eff-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.eff-kpi:nth-child(2){border-right:none}.eff-kpi:nth-child(-n+2){border-bottom:1px solid #303030}.hist-tabla{min-width:780px}.historial-scroll{overflow-x:auto}.period-tabs{width:100%}.period-btn{min-width:0;padding:8px 6px}.period-meta{width:100%}}
 </style>
 </head>
@@ -108,6 +113,13 @@ input[type=date]{background:#222;border:1px solid #444;color:#fff;border-radius:
   <div id="historialContent" class="historial-scroll"><div class="empty-state">Cargando...</div></div>
 </div>
 <div class="section"><h2 id="productsTitle">📦 Productos más pedidos</h2><div id="prodList" class="prod-list"><div class="empty-state">Sin datos aún.</div></div></div>
+<div class="section">
+  <h2>🌡️ Vida útil de comida preparada</h2>
+  <p class="life-help">Define cuántos minutos conserva su calidad cada producto después de preparar una tanda. Usa 0 para desactivar el control.</p>
+  <div class="life-grid" id="foodLifeGrid"><div class="empty-state">Cargando productos...</div></div>
+  <button class="life-save" id="saveFoodLifeBtn">💾 Guardar tiempos</button><span class="life-msg" id="foodLifeMsg"></span>
+  <div class="life-help" id="foodWasteSummary" style="margin:12px 0 0">Sin descartes registrados hoy.</div>
+</div>
 <div class="section"><h2>⚙️ Gestión de personal</h2>
   <p style="font-size:12px;color:#888;margin-bottom:12px">Estos nombres aparecen en el selector de encargados en Cocina. Al eliminar una persona también se borran definitivamente su historial y su rendimiento.</p>
   <div class="staff-edit-row">
@@ -130,6 +142,7 @@ const DEFAULT_STAFF=['Eloy','Jefferson','Benjamin','Victor','Jeremy'];
 const $=id=>document.getElementById(id);
 let staffList=[...DEFAULT_STAFF];
 let analysisPeriod='day',analysisDate=fechaLima(),currentRange=null,currentRecords=[],loadVersion=0,eliminandoRegistro=false;
+let foodLifeConfig={p12:10},foodLifeProducts=[];
 
 async function api(path,opts={}){
   const {headers:extraHeaders, prefer, ...restOpts} = opts;
@@ -158,6 +171,57 @@ function parseStaffList(value){
   if(!Array.isArray(parsed))return [...DEFAULT_STAFF];
   const clean=parsed.map(n=>String(n||'').trim()).filter(Boolean);
   return clean;
+}
+function parseConfigValue(value,fallback){
+  let parsed=value;
+  for(let i=0;i<2&&typeof parsed==='string';i++){
+    try{parsed=JSON.parse(parsed);}catch(e){return fallback;}
+  }
+  return parsed&&typeof parsed==='object'?parsed:fallback;
+}
+function normalizarFoodLifeConfig(value){
+  const result={};
+  Object.entries(value&&typeof value==='object'&&!Array.isArray(value)?value:{}).forEach(([id,minutos])=>{
+    const n=Math.max(0,Math.min(240,Math.round(Number(minutos)||0)));
+    if(n>0)result[id]=n;
+  });
+  return result;
+}
+function renderFoodLifeSettings(panesArr,configRows){
+  foodLifeProducts=panesArr.slice().sort((a,b)=>(a.station||'').localeCompare(b.station||'')||(a.label||'').localeCompare(b.label||'','es'));
+  const row=(configRows||[]).find(item=>item.key==='food_life_config');
+  foodLifeConfig=row?normalizarFoodLifeConfig(parseConfigValue(row.value,{})):{p12:10};
+  const wasteRow=(configRows||[]).find(item=>item.key==='food_waste_log');
+  const waste=parseConfigValue(wasteRow?.value,[]);
+  const todayWaste=(Array.isArray(waste)?waste:[]).filter(item=>new Date((Number(item.discarded_at)||0)-(5*60*60*1000)).toISOString().slice(0,10)===fechaLima());
+  const wasteUnits=todayWaste.reduce((sum,item)=>sum+(Number(item.quantity)||1),0);
+  $('foodWasteSummary').textContent=todayWaste.length?'Descartes registrados hoy: '+todayWaste.length+' tanda'+(todayWaste.length===1?'':'s')+' · '+wasteUnits+' unidad'+(wasteUnits===1?'':'es'):'Sin descartes registrados hoy.';
+  const grid=$('foodLifeGrid');grid.innerHTML='';
+  foodLifeProducts.forEach(product=>{
+    const item=document.createElement('div');item.className='life-row';
+    const info=document.createElement('div');
+    const name=document.createElement('div');name.className='life-name';name.textContent=product.label;
+    const station=document.createElement('div');station.className='life-station';station.textContent=STATION_LABELS[product.station]||product.station||'Sin estación';
+    info.append(name,station);
+    const inputWrap=document.createElement('label');inputWrap.className='life-input-wrap';
+    const input=document.createElement('input');input.className='life-input';input.type='number';input.min='0';input.max='240';input.step='1';input.value=foodLifeConfig[product.id]||0;input.dataset.id=product.id;
+    inputWrap.append(input,document.createTextNode('min'));
+    item.append(info,inputWrap);grid.appendChild(item);
+  });
+  if(!foodLifeProducts.length)grid.innerHTML='<div class="empty-state">No hay productos registrados.</div>';
+}
+async function guardarFoodLifeSettings(){
+  const next={};
+  document.querySelectorAll('.life-input').forEach(input=>{
+    const n=Math.max(0,Math.min(240,Math.round(Number(input.value)||0)));
+    input.value=n;if(n>0)next[input.dataset.id]=n;
+  });
+  foodLifeConfig=next;
+  const msg=$('foodLifeMsg');msg.textContent='Guardando...';msg.style.color='#f0c450';
+  try{
+    await api('config',{method:'POST',body:JSON.stringify({key:'food_life_config',value:JSON.stringify(foodLifeConfig)}),prefer:'resolution=merge-duplicates'});
+    msg.textContent='✅ Tiempos guardados';msg.style.color='#6fcf97';setTimeout(()=>msg.textContent='',3000);
+  }catch(e){msg.textContent='No se pudo guardar';msg.style.color='#f08d75';}
 }
 
 function esResponsableValido(nombre){
@@ -310,13 +374,15 @@ async function loadAll(){
       STATION_LIST.map(st=>`<div class="turno-card ${st}"><div class="st-label">${STATION_LABELS[st]}</div><div class="st-name">${enc[st]||'Sin asignar'}</div></div>`).join('');
   }
 
-  const [registrosPeriodo,registrosAnterior,panesArr]=await Promise.all([
+  const [registrosPeriodo,registrosAnterior,panesArr,foodLifeRows]=await Promise.all([
     registrosDeRango(rango),
     rango.previous?registrosDeRango(rango.previous):Promise.resolve([]),
-    api('panes?select=*').then(r=>r||[])
+    api('panes?select=*').then(r=>r||[]),
+    api("config?key=in.(food_life_config,food_waste_log)").then(r=>r||[]).catch(()=>[])
   ]);
   if(version!==loadVersion)return;
   currentRecords=registrosPeriodo;
+  renderFoodLifeSettings(panesArr,foodLifeRows);
   renderDashboard(registrosPeriodo,registrosAnterior,panesArr,rango);
   renderHistorial(registrosPeriodo,rango);
 
@@ -445,6 +511,7 @@ $('analysisDate').value=analysisDate;$('analysisDate').max=fechaLima();
 $('analysisDate').onchange=()=>{analysisDate=$('analysisDate').value||fechaLima();loadAll();};
 document.querySelectorAll('.period-btn').forEach(btn=>{btn.onclick=()=>{analysisPeriod=btn.dataset.period;actualizarControlesPeriodo();loadAll();};});
 actualizarControlesPeriodo();
+$('saveFoodLifeBtn').onclick=guardarFoodLifeSettings;
 
 // Personal
 function renderStaffTags(){
